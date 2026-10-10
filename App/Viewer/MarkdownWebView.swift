@@ -107,6 +107,11 @@ struct MarkdownWebView: NSViewRepresentable {
         var onToggleTask: (Int) -> Void = { _ in }
         var onHoverLink: (String) -> Void = { _ in }
         var lastJumpToken = 0
+        /// Heading line from the latest outline jump. Scroll reports that land above it
+        /// (the 28px air above a jumped heading) stay clamped so the outline keeps that
+        /// section bold. Cleared once the pin expires and the reader scrolls on.
+        private var jumpPinnedLine: Int?
+        private var jumpPinUntil = Date.distantPast
         var fontScale: Double = 1
         private var appliedFontScale: Double = .nan
         var fullWidth = false
@@ -177,6 +182,8 @@ struct MarkdownWebView: NSViewRepresentable {
 
         /// Scroll the rendered view so 0-based source `line` sits at the top (outline jump, A2).
         func scrollToLine(_ line: Int) {
+            jumpPinnedLine = line
+            jumpPinUntil = Date().addingTimeInterval(0.45)
             guard ready else { pendingLine = line; return }
             webView?.evaluateJavaScript("window.mapledownScrollToLine(\(line));", completionHandler: nil)
         }
@@ -256,7 +263,12 @@ struct MarkdownWebView: NSViewRepresentable {
                         completionHandler: nil)
                 }
             case "scroll":
-                let line = (message.body as? Int) ?? Int((message.body as? Double) ?? 0)
+                var line = (message.body as? Int) ?? Int((message.body as? Double) ?? 0)
+                if let pin = jumpPinnedLine, Date() < jumpPinUntil, line < pin {
+                    line = pin
+                } else if Date() >= jumpPinUntil {
+                    jumpPinnedLine = nil
+                }
                 sync.report(line: line, from: .view)
             case "selection":
                 let n = (message.body as? Int) ?? Int((message.body as? Double) ?? 0)

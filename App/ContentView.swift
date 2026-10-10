@@ -269,8 +269,23 @@ struct ContentView: View {
     }
 
     private func jumpToOutline(_ line: Int) {
-        outlineJumpLine = line
+        let target = max(0, line)
+        // Bold this heading immediately. View mode's scroll report can arrive a beat
+        // later and name the previous block; edit mode's kit jump uses
+        // scrollRangeToVisible, which leaves the heading at the bottom so the top
+        // line (what the outline treats as current) stays on the previous section.
+        sync.report(line: target, from: mode)
+        outlineJumpLine = target
         outlineJumpToken &+= 1
+        guard mode == .edit else { return }
+        DispatchQueue.main.async {
+            DispatchQueue.main.async {
+                EditorOutlineJump.pinLineToTop(target)
+                DispatchQueue.main.async {
+                    self.sync.report(line: target, from: .edit)
+                }
+            }
+        }
     }
 
     /// ⌃⌥↑ / ⌃⌥↓. Previous snaps to the heading of the section on screen, then walks up.

@@ -76,6 +76,8 @@ To build without installing:
 
 > Builds intentionally target DerivedData **outside** the repo to avoid Spotlight/indexer churn. `build/`, `DerivedData/`, and the generated `MapleDown.xcodeproj` are git-ignored — `project.yml` is the source of truth.
 
+A drag-and-drop disk image is a Mac step: `./package-dmg.sh`. It skips itself on other systems.
+
 ### Cut a release
 
 One command does the whole flow — bump version, commit, push, build + sign + notarize, install to `/Applications`, publish the GitHub release, and clean up build artifacts:

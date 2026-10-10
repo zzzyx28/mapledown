@@ -228,12 +228,14 @@ struct SidebarView: View {
 }
 
 /// Headings for the current document, in the sidebar pane and the inspector.
-/// The current section is semibold, and the list follows it as you scroll.
+/// The current section is bold in both View and Edit (both publish through `sync.line`).
+/// The list reveals that row only when it has scrolled out of sight — a `ScrollViewReader`
+/// `scrollTo` on this macOS `List` jumps the outline (and sometimes the split view) on
+/// every section change, including the click that asked for the jump.
 struct OutlineBrowser: View {
     let text: String
     @ObservedObject var sync: ScrollSync
     let onJump: (Int) -> Void
-    @State private var followedLine: Int?
 
     var body: some View {
         let headings = Outline.headings(in: text)
@@ -247,35 +249,92 @@ struct OutlineBrowser: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollViewReader { proxy in
-                    List {
-                        ForEach(Array(headings.enumerated()), id: \.offset) { _, heading in
-                            Button { onJump(heading.line) } label: {
-                                Text(heading.title.isEmpty ? "Untitled" : heading.title)
-                                    .font(heading.level >= 4 ? .caption : .callout)
-                                    .fontWeight(heading.line == currentLine ? .semibold : .regular)
-                                    .foregroundStyle(heading.line == currentLine ? Color.primary : Color.secondary)
-                                    .lineLimit(1)
-                                    .padding(.leading, CGFloat(heading.level - 1) * 12)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .id(heading.line)
+                List {
+                    ForEach(headings, id: \.line) { heading in
+                        OutlineEntry(level: heading.level,
+                                     title: heading.title,
+                                     isCurrent: heading.line == currentLine) {
+                            onJump(heading.line)
                         }
                     }
-                    .listStyle(.sidebar)
-                    .onChange(of: currentLine) { _, line in follow(line, with: proxy) }
-                    .onAppear { follow(currentLine, with: proxy) }
                 }
+                .listStyle(.sidebar)
+            }
+        }
+    }
+}
+
+private struct OutlineEntry: View {
+    let level: Int
+    let title: String
+    let isCurrent: Bool
+    let action: () -> Void
+
+    private var size: CGFloat { level >= 4 ? 11 : 13 }
+
+    var body: some View {
+        Button(action: action) {
+            // Two different text views, not `.fontWeight` on one. A sidebar `List` keeps
+            // the first weight it rendered, so the current section never went bold as you
+            // scrolled in View or Edit.
+            Group {
+                if isCurrent {
+                    Text(title.isEmpty ? "Untitled" : title)
+                        .font(.system(size: size, weight: .bold))
+                        .foregroundStyle(Color.primary)
+                } else {
+                    Text(title.isEmpty ? "Untitled" : title)
+                        .font(.system(size: size, weight: .regular))
+                        .foregroundStyle(Color.secondary)
+                }
+            }
+            .id(isCurrent)
+            .lineLimit(1)
+            .padding(.leading, CGFloat(level - 1) * 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focusable(false)
+        .background(OutlineFollowAnchor(isCurrent: isCurrent).allowsHitTesting(false))
+    }
+}
+
+/// Scrolls the current outline row into view once, and only if it isn't already visible.
+/// Uses the row's own scroll view, so a section change doesn't jump the window.
+private struct OutlineFollowAnchor: NSViewRepresentable {
+    var isCurrent: Bool
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        let becameCurrent = isCurrent && !context.coordinator.wasCurrent
+        context.coordinator.wasCurrent = isCurrent
+        guard becameCurrent else { return }
+        DispatchQueue.main.async {
+            if view.window == nil {
+                DispatchQueue.main.async { Self.revealIfNeeded(view) }
+            } else {
+                Self.revealIfNeeded(view)
             }
         }
     }
 
-    private func follow(_ line: Int?, with proxy: ScrollViewProxy) {
-        guard let line, line != followedLine else { return }
-        followedLine = line
-        proxy.scrollTo(line, anchor: .center)
+    final class Coordinator { var wasCurrent = false }
+
+    private static func revealIfNeeded(_ view: NSView) {
+        let target = sequence(first: view, next: { $0.superview }).first { $0 is NSTableRowView } ?? view
+        guard let clip = target.enclosingScrollView?.contentView else { return }
+        let rect = target.convert(target.bounds, to: clip)
+        let visible = clip.bounds.insetBy(dx: 0, dy: 2)
+        if visible.contains(CGPoint(x: rect.midX, y: rect.midY)) { return }
+        target.scrollToVisible(target.bounds)
     }
 }
 

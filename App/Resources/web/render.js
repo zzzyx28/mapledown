@@ -93,18 +93,21 @@ window.mapledownSetFullWidth = function (full) {
 };
 
 // ---- scroll sync API -------------------------------------------------------
-// 0-based source line of the block at the top of the viewport (interpolated).
+// 0-based source line at the reading position. Probe a little below the top edge so a
+// heading parked under `scroll-margin-top` (28px) still counts as the current section.
+// Sampling y=0 reports the previous block and the outline bolds the wrong heading.
 window.mapledownGetTopLine = function () {
   const els = document.querySelectorAll('[data-source-line]');
+  const probe = 40;
   let prev = null;
   for (const el of els) {
     const r = el.getBoundingClientRect();
     const l = parseInt(el.getAttribute('data-source-line'), 10);
     if (isNaN(l)) continue;
-    if (r.top <= 0) { prev = { l: l, top: r.top }; continue; }
+    if (r.top <= probe) { prev = { l: l, top: r.top }; continue; }
     if (prev) {
       const span = (r.top - prev.top) || 1;
-      const f = Math.max(0, Math.min(1, (0 - prev.top) / span));
+      const f = Math.max(0, Math.min(1, (probe - prev.top) / span));
       return Math.round(prev.l + (l - prev.l) * f);
     }
     return l;
@@ -112,7 +115,7 @@ window.mapledownGetTopLine = function () {
   return prev ? prev.l : 0;
 };
 
-// Scroll so that source `line` sits at the top of the viewport.
+// Scroll so that source `line` sits near the top of the viewport.
 window.mapledownScrollToLine = function (line) {
   const els = document.querySelectorAll('[data-source-line]');
   if (!els.length) return;
@@ -133,6 +136,11 @@ window.mapledownScrollToLine = function (line) {
   else return;
   // Leave the same air as `scroll-margin-top` so a heading jump is not pinned to the edge.
   window.scrollTo(0, Math.max(0, y - 28));
+  // Tell native the heading we actually jumped to. The scroll listener's interpolated
+  // line can sit a few lines early because of that air; the outline would then bold
+  // the previous section.
+  const h = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.scroll;
+  if (h) h.postMessage(line);
 };
 
 let mapledownScrollTimer = null;

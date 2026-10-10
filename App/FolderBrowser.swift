@@ -6,7 +6,57 @@ import AppKit
 /// get a sidebar-only browser window; everything else is handed to the normal document
 /// pipeline so plain `.md` opening keeps working unchanged.
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool { false }
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main) { note in
+            guard WelcomeWindowController.isArmed,
+                  let window = note.object as? NSWindow,
+                  !WelcomeWindowController.isWelcome(window),
+                  !(window is NSPanel) else { return }
+            WelcomeWindowController.close()
+        }
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification, object: nil, queue: .main) { note in
+            guard let window = note.object as? NSWindow,
+                  !WelcomeWindowController.isWelcome(window),
+                  !(window is NSPanel),
+                  !WelcomeWindowController.isQuitting else { return }
+            DispatchQueue.main.async {
+                let documentVisible = NSDocumentController.shared.documents.contains { doc in
+                    doc.windowControllers.contains { $0.window?.isVisible == true }
+                }
+                let otherVisible = NSApp.windows.contains { candidate in
+                    candidate.isVisible && !(candidate is NSPanel)
+                        && !WelcomeWindowController.isWelcome(candidate)
+                }
+                if !documentVisible && !otherVisible {
+                    WelcomeWindowController.show()
+                }
+            }
+        }
+        DispatchQueue.main.async {
+            WelcomeWindowController.shared.showIfLaunchingIdle()
+        }
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { WelcomeWindowController.show() }
+        return true
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        WelcomeWindowController.isQuitting = true
+        let reply = NSDocumentController.shared.applicationShouldTerminate(sender)
+        if reply == .terminateCancel {
+            WelcomeWindowController.isQuitting = false
+        }
+        return reply
+    }
+
     func application(_ application: NSApplication, open urls: [URL]) {
+        WelcomeWindowController.noteOpeningURLs()
         for url in urls {
             if isDirectory(url) {
                 FolderBrowserWindowController.show(folder: url)
