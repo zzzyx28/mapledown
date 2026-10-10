@@ -53,7 +53,7 @@ Toggle with `⌘E` — *View* renders KaTeX math, tables, and highlighted code; 
 
 ### Download (prebuilt)
 
-After publishing a release, download MapleDown.app from this repository's **Releases** page, unzip it, and move it to `/Applications`.
+Download the latest `.dmg` from this repository's **Releases** page, open it, and drag **MapleDown** to `/Applications`.
 
 Launch it once to register the Quick Look extension. To make it your default Markdown app: right-click a `.md` → **Get Info** → **Open with** → **MapleDown** → **Change All…**
 

@@ -48,11 +48,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         WelcomeWindowController.isQuitting = true
-        let reply = NSDocumentController.shared.applicationShouldTerminate(sender)
-        if reply == .terminateCancel {
+        let documents = NSDocumentController.shared
+        guard documents.hasEditedDocuments else { return .terminateNow }
+        // NSDocumentController no longer implements applicationShouldTerminate(_:).
+        // Review unsaved files ourselves, then reply once the user decides.
+        documents.reviewUnsavedDocuments(
+            withAlertTitle: nil,
+            cancellable: true,
+            delegate: self,
+            didReviewAllSelector: #selector(AppDelegate.documentController(_:didReviewAll:contextInfo:)),
+            contextInfo: nil)
+        return .terminateLater
+    }
+
+    @objc func documentController(
+        _ documentController: NSDocumentController,
+        didReviewAll: Bool,
+        contextInfo: UnsafeMutableRawPointer?
+    ) {
+        if !didReviewAll {
             WelcomeWindowController.isQuitting = false
         }
-        return reply
+        NSApp.reply(toApplicationShouldTerminate: didReviewAll)
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
