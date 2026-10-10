@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 /// Receives folder-open events the document machinery can't (a folder isn't a
-/// `FileDocument`): Finder "Open With", `open -a Leaflight <dir>`, drag-onto-icon. Folders
+/// `FileDocument`): Finder "Open With", `open -a MapleDown <dir>`, drag-onto-icon. Folders
 /// get a sidebar-only browser window; everything else is handed to the normal document
 /// pipeline so plain `.md` opening keeps working unchanged.
 final class AppDelegate: NSObject, NSApplicationDelegate {

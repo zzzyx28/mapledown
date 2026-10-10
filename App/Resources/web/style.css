@@ -1,4 +1,4 @@
-/* Leaflight rendered-markdown stylesheet — see DESIGN.md.
+/* MapleDown rendered-markdown stylesheet — see DESIGN.md.
    Colors are macOS semantic system colors so the page matches the native AppKit
    chrome and tracks light/dark + the user's accent automatically. No hardcoded
    palette, no prefers-color-scheme block: -apple-system-* and AccentColor resolve
@@ -103,7 +103,7 @@ body.full-width #content { max-width: 100%; }
 /* Broken/missing local image -> labelled placeholder (built in render.js). A box is a
    deliberate last resort here (DESIGN.md §2): it must read as absent content, not styled
    text. Subtle fill + dashed hairline signals "nothing loaded"; label secondary, hint fainter. */
-#content .leaflight-missing-image {
+#content .mapledown-missing-image {
   display: inline-flex;
   flex-direction: column;
   gap: .1em;
@@ -113,8 +113,8 @@ body.full-width #content { max-width: 100%; }
   border-radius: 8px;
   vertical-align: middle;
 }
-#content .leaflight-missing-label { color: var(--fg-2); font-size: .9em; }
-#content .leaflight-missing-hint  { color: var(--fg-3); font-size: .75em; }
+#content .mapledown-missing-label { color: var(--fg-2); font-size: .9em; }
+#content .mapledown-missing-hint  { color: var(--fg-3); font-size: .75em; }
 #content hr { height: 1px; border: 0; background: var(--border); margin: 2em 0; }
 
 #content blockquote > :last-child,
@@ -134,7 +134,7 @@ body.full-width #content { max-width: 100%; }
 /* Code-block copy button (A4): one floating control that follows the hovered <pre>
    (built in render.js). System-colored (same vars as the chrome), caption-sized, and
    only visible while hovering the block — quiet by default (DESIGN.md §5). */
-.leaflight-copy-btn {
+.mapledown-copy-btn {
   position: absolute;
   transform: translateX(-100%);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
@@ -150,13 +150,13 @@ body.full-width #content { max-width: 100%; }
   pointer-events: none;
   transition: opacity 0.12s ease;
 }
-.leaflight-copy-btn.visible { opacity: 1; pointer-events: auto; }
-.leaflight-copy-btn:hover { background: var(--fill-2); }
+.mapledown-copy-btn.visible { opacity: 1; pointer-events: auto; }
+.mapledown-copy-btn:hover { background: var(--fill-2); }
 
 /* Print / Export as PDF (D1): let the document use the full page, keep atomic blocks
    from splitting across pages, and drop the interactive-only copy button. */
 @media print {
-  .leaflight-copy-btn { display: none !important; }
+  .mapledown-copy-btn { display: none !important; }
   #content { max-width: none; margin: 0; padding: 0; }
   #content pre, #content table, #content blockquote,
   #content img, #content .katex-display { break-inside: avoid; }

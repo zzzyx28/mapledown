@@ -1,4 +1,4 @@
-# Leaflight demo
+# MapleDown demo
 
 A minimal native Markdown editor. **View** renders, **Edit** is raw + lint.
 

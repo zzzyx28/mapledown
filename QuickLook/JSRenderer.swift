@@ -8,7 +8,7 @@ import os
 /// output needs no JavaScript at display time (KaTeX is pre-rendered to HTML+CSS),
 /// so Quick Look's HTML renderer shows it correctly.
 enum JSRenderer {
-    private static let log = Logger(subsystem: "io.github.zzzyx28.leaflight.ql", category: "jsrender")
+    private static let log = Logger(subsystem: "io.github.zzzyx28.mapledown.ql", category: "jsrender")
 
     static func htmlDocument(markdown: String, bundle: Bundle) -> String {
         let web = WebResources.directory(in: bundle)
@@ -44,8 +44,8 @@ enum JSRenderer {
         ctx.evaluateScript(katex)
         ctx.evaluateScript(texmath)
         ctx.evaluateScript(hljs)
-        ctx.evaluateScript(anchors)   // defines window.leaflightAnchors (window === this here)
-        ctx.evaluateScript(tasklists) // defines window.leaflightTaskLists
+        ctx.evaluateScript(anchors)   // defines window.mapledownAnchors (window === this here)
+        ctx.evaluateScript(tasklists) // defines window.mapledownTaskLists
         ctx.evaluateScript(#"""
         var __md = markdownit({
           html: true, linkify: true, typographer: true,
@@ -64,8 +64,8 @@ enum JSRenderer {
           delimiters: 'dollars',
           katexOptions: { throwOnError: false, strict: false, output: 'html' }
         });
-        leaflightAnchors(__md);   // GitHub-style heading ids so in-document #anchors resolve in Quick Look
-        leaflightTaskLists(__md, { interactive: false });   // static checkboxes (disabled) in Quick Look
+        mapledownAnchors(__md);   // GitHub-style heading ids so in-document #anchors resolve in Quick Look
+        mapledownTaskLists(__md, { interactive: false });   // static checkboxes (disabled) in Quick Look
         function __render(src){ return __md.render(src); }
         """#)
 

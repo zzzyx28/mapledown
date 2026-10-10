@@ -1,31 +1,31 @@
 #!/bin/bash
-# Build a Developer ID-signed, Apple-notarized, stapled, Universal Leaflight.app and zip it.
+# Build a Developer ID-signed, Apple-notarized, stapled, Universal MapleDown.app and zip it.
 #
 # Prerequisites (one-time):
 #   - A "Developer ID Application" certificate in your keychain
 #     (Xcode → Settings → Accounts → Manage Certificates → + → Developer ID Application)
 #   - A notarytool keychain profile:
-#       xcrun notarytool store-credentials leaflight-notary \
+#       xcrun notarytool store-credentials mapledown-notary \
 #         --apple-id you@example.com --team-id XXXXXXXXXX --password <app-specific-password>
 #
 # Usage:
-#   LEAFLIGHT_TEAM_ID=XXXXXXXXXX ./release.sh [version]
+#   MAPLEDOWN_TEAM_ID=XXXXXXXXXX ./release.sh [version]
 set -e
 cd "$(dirname "$0")"
 
 VERSION="${1:-1.0.0}"
-TEAM_ID="${LEAFLIGHT_TEAM_ID:?set LEAFLIGHT_TEAM_ID to your 10-char Apple Developer Team ID}"
-SIGN_ID="${LEAFLIGHT_SIGN_ID:-Developer ID Application}"
-NOTARY_PROFILE="${LEAFLIGHT_NOTARY_PROFILE:-leaflight-notary}"
-DD="$HOME/Library/Developer/Xcode/DerivedData/leaflight-build"
-APP="$DD/Build/Products/Release/Leaflight.app"
-ZIP="/tmp/Leaflight-v$VERSION-macos.zip"
+TEAM_ID="${MAPLEDOWN_TEAM_ID:?set MAPLEDOWN_TEAM_ID to your 10-char Apple Developer Team ID}"
+SIGN_ID="${MAPLEDOWN_SIGN_ID:-Developer ID Application}"
+NOTARY_PROFILE="${MAPLEDOWN_NOTARY_PROFILE:-mapledown-notary}"
+DD="$HOME/Library/Developer/Xcode/DerivedData/mapledown-build"
+APP="$DD/Build/Products/Release/MapleDown.app"
+ZIP="/tmp/MapleDown-v$VERSION-macos.zip"
 
 command -v xcodegen >/dev/null && xcodegen generate
 
 echo "==> Building Universal Release, signed with Developer ID + hardened runtime"
 rm -rf "$DD/Build/Products/Release"
-xcodebuild -project Leaflight.xcodeproj -scheme Leaflight -configuration Release -derivedDataPath "$DD" \
+xcodebuild -project MapleDown.xcodeproj -scheme MapleDown -configuration Release -derivedDataPath "$DD" \
   ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO \
   CODE_SIGN_STYLE=Manual \
   CODE_SIGN_IDENTITY="$SIGN_ID" \
@@ -47,7 +47,7 @@ spctl -a -vvv -t exec "$APP" || true
 
 # The notarized .app now lives in $ZIP. Leaving the DerivedData build copy on
 # disk lets Launch Services register it; once the same app is also installed to
-# /Applications, two bundles share io.github.zzzyx28.leaflight(.QuickLookExtension) and pkd
+# /Applications, two bundles share io.github.zzzyx28.mapledown(.QuickLookExtension) and pkd
 # rejects one ("another plugin has precedent") — silently killing Quick Look.
 # Drop the build copy so only the installed copy is ever registered.
 echo "==> Cleanup: unregister + remove DerivedData build copy (prevents duplicate bundle-id that breaks Quick Look)"

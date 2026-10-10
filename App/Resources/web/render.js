@@ -27,17 +27,17 @@ const md = window.markdownit({
 });
 
 // GitHub-style heading anchor ids (h1–h6), so in-document [x](#section) links resolve.
-window.leaflightAnchors(md);
+window.mapledownAnchors(md);
 
 // Clickable task-list checkboxes (- [ ] / - [x]). Interactive here (app view mode);
 // Quick Look renders them disabled. See tasklists.js.
-window.leaflightTaskLists(md, { interactive: true });
+window.mapledownTaskLists(md, { interactive: true });
 
 // ---- source-line mapping (for rendered<->raw scroll sync) -------------------
 // Tag every top-level block with the 0-based source line it starts on. Most
 // block tokens render through renderToken/renderAttrs, so setting the attr is
 // enough; fenced code is special-cased because our `highlight` returns raw <pre>.
-md.core.ruler.push('leaflight_source_line', function (state) {
+md.core.ruler.push('mapledown_source_line', function (state) {
   for (const t of state.tokens) {
     if (!t.map || t.level !== 0) continue;
     if (t.nesting === 1 || t.type === 'hr' || t.type === 'code_block' ||
@@ -72,7 +72,7 @@ window.renderMarkdown = function (src) {
 // ---- font zoom -------------------------------------------------------------
 // Scale every text size off the body font-size. Headings, code, KaTeX, etc. are
 // all sized in `em`, so scaling the body cascades to the whole document.
-window.leaflightSetFontScale = function (scale) {
+window.mapledownSetFontScale = function (scale) {
   var s = (typeof scale === 'number' && scale > 0) ? scale : 1;
   document.body.style.fontSize = (16 * s) + 'px';
 };
@@ -80,12 +80,12 @@ window.leaflightSetFontScale = function (scale) {
 // ---- full-width toggle -----------------------------------------------------
 // When on, content fills the viewport width; when off (default) it stays capped
 // to a readable measure and centered. Kept in sync with the raw editor.
-window.leaflightSetFullWidth = function (full) {
+window.mapledownSetFullWidth = function (full) {
   document.body.classList.toggle('full-width', !!full);
   // Enable the width transition only after the initial apply has painted, so opening
   // a doc that was saved full-width snaps to width instead of animating on load.
-  if (!window.__leaflightWidthAnim) {
-    window.__leaflightWidthAnim = true;
+  if (!window.__mapledownWidthAnim) {
+    window.__mapledownWidthAnim = true;
     requestAnimationFrame(function () {
       requestAnimationFrame(function () { document.body.classList.add('anim'); });
     });
@@ -94,7 +94,7 @@ window.leaflightSetFullWidth = function (full) {
 
 // ---- scroll sync API -------------------------------------------------------
 // 0-based source line of the block at the top of the viewport (interpolated).
-window.leaflightGetTopLine = function () {
+window.mapledownGetTopLine = function () {
   const els = document.querySelectorAll('[data-source-line]');
   let prev = null;
   for (const el of els) {
@@ -113,7 +113,7 @@ window.leaflightGetTopLine = function () {
 };
 
 // Scroll so that source `line` sits at the top of the viewport.
-window.leaflightScrollToLine = function (line) {
+window.mapledownScrollToLine = function (line) {
   const els = document.querySelectorAll('[data-source-line]');
   if (!els.length) return;
   let lo = null, hi = null;
@@ -135,21 +135,21 @@ window.leaflightScrollToLine = function (line) {
   window.scrollTo(0, Math.max(0, y - 28));
 };
 
-let leaflightScrollTimer = null;
+let mapledownScrollTimer = null;
 window.addEventListener('scroll', function () {
-  if (leaflightScrollTimer) return;
-  leaflightScrollTimer = setTimeout(function () {
-    leaflightScrollTimer = null;
+  if (mapledownScrollTimer) return;
+  mapledownScrollTimer = setTimeout(function () {
+    mapledownScrollTimer = null;
     const h = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.scroll;
-    if (h) h.postMessage(window.leaflightGetTopLine());
+    if (h) h.postMessage(window.mapledownGetTopLine());
   }, 80);
 }, { passive: true });
 
 // ---- selection character count ---------------------------------------------
 // Report the selected text's length (code points, ~user-visible chars) to native,
 // debounced. 0 when the selection is empty/collapsed so the readout hides.
-let leaflightSelTimer = null;
-function leaflightReportSelection() {
+let mapledownSelTimer = null;
+function mapledownReportSelection() {
   const h = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.selection;
   if (!h) return;
   const s = window.getSelection();
@@ -157,8 +157,8 @@ function leaflightReportSelection() {
   h.postMessage(str ? Array.from(str).length : 0);
 }
 document.addEventListener('selectionchange', function () {
-  if (leaflightSelTimer) return;
-  leaflightSelTimer = setTimeout(function () { leaflightSelTimer = null; leaflightReportSelection(); }, 120);
+  if (mapledownSelTimer) return;
+  mapledownSelTimer = setTimeout(function () { mapledownSelTimer = null; mapledownReportSelection(); }, 120);
 });
 
 // ---- task checkbox toggling ------------------------------------------------
@@ -180,7 +180,7 @@ document.addEventListener('selectionchange', function () {
 })();
 
 // ---- in-page find ----------------------------------------------------------
-window.leaflightCountMatches = function (q, caseSensitive) {
+window.mapledownCountMatches = function (q, caseSensitive) {
   if (!q) return 0;
   const text = document.body.innerText || '';
   const hay = caseSensitive ? text : text.toLowerCase();
@@ -193,7 +193,7 @@ window.leaflightCountMatches = function (q, caseSensitive) {
 
 // `fresh` (new query) searches from the document start; otherwise continues
 // from the current selection so next/prev step through matches.
-window.leaflightFind = function (q, caseSensitive, backwards, fresh) {
+window.mapledownFind = function (q, caseSensitive, backwards, fresh) {
   const sel = window.getSelection();
   if (!q) { sel.removeAllRanges(); return false; }
   if (fresh) sel.removeAllRanges();
@@ -201,7 +201,7 @@ window.leaflightFind = function (q, caseSensitive, backwards, fresh) {
 };
 
 // ---- link handling ---------------------------------------------------------
-// Route every link click to native (open .md in Leaflight, files in their default app,
+// Route every link click to native (open .md in MapleDown, files in their default app,
 // http/mailto in the browser) instead of letting WebKit navigate. In-page anchors
 // (href="#...") are left alone so the page scrolls to the heading as usual.
 document.addEventListener('click', function (e) {
@@ -224,18 +224,18 @@ document.addEventListener('click', function (e) {
   if (!content) return;
   content.addEventListener('error', function (e) {
     var img = e.target;
-    if (!img || img.tagName !== 'IMG' || img.dataset.leaflightBroken) return;
-    img.dataset.leaflightBroken = '1';
+    if (!img || img.tagName !== 'IMG' || img.dataset.mapledownBroken) return;
+    img.dataset.mapledownBroken = '1';
     var src = img.getAttribute('src') || '';
     var name = (src.split(/[\\/]/).pop() || '').split('?')[0] || 'image';
     var label = (img.getAttribute('alt') || '').trim() || name;
     var ph = document.createElement('span');
-    ph.className = 'leaflight-missing-image';
+    ph.className = 'mapledown-missing-image';
     var l = document.createElement('span');
-    l.className = 'leaflight-missing-label';
+    l.className = 'mapledown-missing-label';
     l.textContent = label;
     var h = document.createElement('span');
-    h.className = 'leaflight-missing-hint';
+    h.className = 'mapledown-missing-hint';
     h.textContent = 'missing image';
     ph.appendChild(l);
     ph.appendChild(h);
@@ -251,7 +251,7 @@ document.addEventListener('click', function (e) {
   var content = document.getElementById('content');
   if (!content) return;
   var btn = document.createElement('button');
-  btn.className = 'leaflight-copy-btn';
+  btn.className = 'mapledown-copy-btn';
   btn.type = 'button';
   btn.textContent = 'Copy';
   document.body.appendChild(btn);

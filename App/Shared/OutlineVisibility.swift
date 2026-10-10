@@ -6,7 +6,7 @@ import SwiftUI
 final class OutlineVisibility: ObservableObject {
     static let shared = OutlineVisibility()
 
-    private static let key = "leaflight.outlineVisible"
+    private static let key = "mapledown.outlineVisible"
 
     @Published var isVisible: Bool {
         didSet {

@@ -1,6 +1,6 @@
-# Leaflight Design Philosophy
+# MapleDown Design Philosophy
 
-Leaflight is a native macOS Markdown viewer. Its design follows one rule above all:
+MapleDown is a native macOS Markdown viewer. Its design follows one rule above all:
 
 > **The document is the interface.** Chrome recedes, content leads.
 
@@ -128,6 +128,6 @@ curve) and the sidebar reveal/collapse. Everything else is instant.
 
 ---
 
-*This document is the source of truth for Leaflight's look. Code that sets a color,
+*This document is the source of truth for MapleDown's look. Code that sets a color,
 size, or spacing value should be traceable to a rule here. If it can't be, either
 the code is wrong or this document needs a new rule — fix one of them.*

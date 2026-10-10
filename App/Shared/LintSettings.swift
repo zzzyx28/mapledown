@@ -6,7 +6,7 @@ import SwiftUI
 final class LintSettings: ObservableObject {
     static let shared = LintSettings()
 
-    private static let key = "leaflight.lintEnabled"
+    private static let key = "mapledown.lintEnabled"
 
     @Published var isEnabled: Bool {
         didSet {

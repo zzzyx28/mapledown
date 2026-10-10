@@ -1,6 +1,6 @@
 # Third-party notices
 
-Leaflight includes or depends on the following third-party software. Keep these notices with source and binary redistributions.
+MapleDown includes or depends on the following third-party software. Keep these notices with source and binary redistributions.
 
 ## Bundled web assets
 

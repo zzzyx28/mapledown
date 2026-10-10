@@ -6,7 +6,7 @@ import SwiftUI
 final class FontScale: ObservableObject {
     static let shared = FontScale()
 
-    private static let key = "leaflight.fontScale"
+    private static let key = "mapledown.fontScale"
     static let minScale = 0.5
     static let maxScale = 3.0
     private static let step = 0.1

@@ -25,7 +25,7 @@ struct MarkdownWebView: NSViewRepresentable {
     var selection: SelectionController
     /// Folder the open document lives in; relative in-document links resolve against it.
     var docDirectory: URL?
-    /// Opens a markdown file in Leaflight (in-document link to another .md). Non-markdown links
+    /// Opens a markdown file in MapleDown (in-document link to another .md). Non-markdown links
     /// and external (http/mailto) links are handed to the system instead.
     var onOpenFile: (URL) -> Void = { _ in }
     /// A rendered task checkbox was clicked; carries its 0-based source line to toggle (A3).
@@ -172,13 +172,13 @@ struct MarkdownWebView: NSViewRepresentable {
             fontScale = scale
             guard ready, scale != appliedFontScale else { return }
             appliedFontScale = scale
-            webView?.evaluateJavaScript("window.leaflightSetFontScale(\(scale));", completionHandler: nil)
+            webView?.evaluateJavaScript("window.mapledownSetFontScale(\(scale));", completionHandler: nil)
         }
 
         /// Scroll the rendered view so 0-based source `line` sits at the top (outline jump, A2).
         func scrollToLine(_ line: Int) {
             guard ready else { pendingLine = line; return }
-            webView?.evaluateJavaScript("window.leaflightScrollToLine(\(line));", completionHandler: nil)
+            webView?.evaluateJavaScript("window.mapledownScrollToLine(\(line));", completionHandler: nil)
         }
 
         /// Push the full-width state into the page (no-op until ready, de-duped).
@@ -186,7 +186,7 @@ struct MarkdownWebView: NSViewRepresentable {
             fullWidth = full
             guard ready, full != appliedFullWidth else { return }
             appliedFullWidth = full
-            webView?.evaluateJavaScript("window.leaflightSetFullWidth(\(full));", completionHandler: nil)
+            webView?.evaluateJavaScript("window.mapledownSetFullWidth(\(full));", completionHandler: nil)
         }
 
         // MARK: find
@@ -219,11 +219,11 @@ struct MarkdownWebView: NSViewRepresentable {
 
         private func performFind(_ find: FindController, backwards: Bool, fresh: Bool) {
             let q = find.query, cs = find.caseSensitive
-            let js = "window.leaflightFind(\(WebResources.jsLiteral(q)), \(cs), \(backwards), \(fresh));"
+            let js = "window.mapledownFind(\(WebResources.jsLiteral(q)), \(cs), \(backwards), \(fresh));"
             webView?.evaluateJavaScript(js) { [weak self] res, _ in
                 let found = (res as? Bool) ?? false
                 self?.webView?.evaluateJavaScript(
-                    "window.leaflightCountMatches(\(WebResources.jsLiteral(q)), \(cs));") { c, _ in
+                    "window.mapledownCountMatches(\(WebResources.jsLiteral(q)), \(cs));") { c, _ in
                     let n = (c as? Int) ?? Int((c as? Double) ?? 0)
                     if n == 0 && !found { self?.setStatus(find, "Not found") }
                     else { self?.setStatus(find, "\(n) match\(n == 1 ? "" : "es")") }
@@ -252,7 +252,7 @@ struct MarkdownWebView: NSViewRepresentable {
                 if let line = pendingLine {
                     pendingLine = nil
                     webView?.evaluateJavaScript(
-                        "requestAnimationFrame(function(){window.leaflightScrollToLine(\(line));});",
+                        "requestAnimationFrame(function(){window.mapledownScrollToLine(\(line));});",
                         completionHandler: nil)
                 }
             case "scroll":
@@ -280,7 +280,7 @@ struct MarkdownWebView: NSViewRepresentable {
 
         /// Routes a clicked in-document link: http/https/mailto/ftp go to the system; a
         /// relative/absolute file path resolves against the document's folder — markdown
-        /// opens in Leaflight, anything else (image, PDF, dir…) is handed to its default app.
+        /// opens in MapleDown, anything else (image, PDF, dir…) is handed to its default app.
         private func openLink(_ href: String) {
             let raw = href.trimmingCharacters(in: .whitespaces)
             if let u = URL(string: raw), let scheme = u.scheme?.lowercased(),

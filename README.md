@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="assets/icon.png" width="128" alt="Leaflight icon">
+<img src="assets/icon.png" width="128" alt="MapleDown icon">
 
-# Leaflight
+# MapleDown
 
 **A minimal, native macOS Markdown editor.**
 
@@ -14,7 +14,7 @@ Two modes — clean **View** and raw **Edit**. Folder sidebar, offline **LaTeX**
 
 <br>
 
-<img src="assets/screenshot-view.png" width="860" alt="Leaflight — View mode: sidebar, tabs, rendered Markdown with KaTeX math and syntax-highlighted code">
+<img src="assets/screenshot-view.png" width="860" alt="MapleDown — View mode: sidebar, tabs, rendered Markdown with KaTeX math and syntax-highlighted code">
 
 </div>
 
@@ -53,28 +53,28 @@ Toggle with `⌘E` — *View* renders KaTeX math, tables, and highlighted code; 
 
 ### Download (prebuilt)
 
-After publishing a release, download Leaflight.app from this repository's **Releases** page, unzip it, and move it to `/Applications`.
+After publishing a release, download MapleDown.app from this repository's **Releases** page, unzip it, and move it to `/Applications`.
 
-Launch it once to register the Quick Look extension. To make it your default Markdown app: right-click a `.md` → **Get Info** → **Open with** → **Leaflight** → **Change All…**
+Launch it once to register the Quick Look extension. To make it your default Markdown app: right-click a `.md` → **Get Info** → **Open with** → **MapleDown** → **Change All…**
 
 ### Build from source
 
 ```bash
-git clone https://github.com/zzzyx28/leaflight.git
-cd leaflight
+git clone https://github.com/zzzyx28/mapledown.git
+cd mapledown
 ./install.sh
 ```
 
-`install.sh` builds a Release version, copies **Leaflight.app** to `/Applications`, registers it with Launch Services, sets it as the default handler for Markdown, and enables the Quick Look extension.
+`install.sh` builds a Release version, copies **MapleDown.app** to `/Applications`, registers it with Launch Services, sets it as the default handler for Markdown, and enables the Quick Look extension.
 
 To build without installing:
 
 ```bash
-./build.sh            # Release  -> ~/Library/Developer/Xcode/DerivedData/leaflight-build/...
+./build.sh            # Release  -> ~/Library/Developer/Xcode/DerivedData/mapledown-build/...
 ./build.sh Debug      # Debug
 ```
 
-> Builds intentionally target DerivedData **outside** the repo to avoid Spotlight/indexer churn. `build/`, `DerivedData/`, and the generated `Leaflight.xcodeproj` are git-ignored — `project.yml` is the source of truth.
+> Builds intentionally target DerivedData **outside** the repo to avoid Spotlight/indexer churn. `build/`, `DerivedData/`, and the generated `MapleDown.xcodeproj` are git-ignored — `project.yml` is the source of truth.
 
 ### Cut a release
 
@@ -85,7 +85,7 @@ One command does the whole flow — bump version, commit, push, build + sign + n
 ./ship.sh 1.1.5 -m "release: …" -n notes.md -y    # custom message + notes, no prompt
 ```
 
-It bumps `MARKETING_VERSION`/`CURRENT_PROJECT_VERSION` in `project.yml`, reads the Team ID from your Developer ID certificate, and refuses to clobber an existing tag/release. Requires the same signing prerequisites as `release.sh` (a *Developer ID Application* cert and a `notarytool` keychain profile, default `leaflight-notary`). The build/sign/notarize step is `release.sh`; `ship.sh` wraps the git + install + publish + clean around it.
+It bumps `MARKETING_VERSION`/`CURRENT_PROJECT_VERSION` in `project.yml`, reads the Team ID from your Developer ID certificate, and refuses to clobber an existing tag/release. Requires the same signing prerequisites as `release.sh` (a *Developer ID Application* cert and a `notarytool` keychain profile, default `mapledown-notary`). The build/sign/notarize step is `release.sh`; `ship.sh` wraps the git + install + publish + clean around it.
 
 ## Usage
 
@@ -105,9 +105,9 @@ It bumps `MARKETING_VERSION`/`CURRENT_PROJECT_VERSION` in `project.yml`, reads t
 | Toggle HTML comments in raw editor | `⌘/` |
 | Quick Look preview | Select a `.md` in Finder, press <kbd>space</kbd> |
 
-### Make Leaflight the default Markdown app
+### Make MapleDown the default Markdown app
 
-`install.sh` does this automatically. To set it manually: right-click any `.md` in Finder → **Get Info** → **Open with** → **Leaflight** → **Change All…**
+`install.sh` does this automatically. To set it manually: right-click any `.md` in Finder → **Get Info** → **Open with** → **MapleDown** → **Change All…**
 
 ## How it works
 
@@ -131,13 +131,13 @@ release.sh / ship.sh     sign+notarize · one-command release (bump→publish→
 ## Uninstall
 
 ```bash
-rm -rf /Applications/Leaflight.app
+rm -rf /Applications/MapleDown.app
 ```
 
 (Reset the default app for `.md` via Finder → Get Info if desired.)
 
 ## License
 
-[MIT](LICENSE) © 2026 Zhengyx. Leaflight is my macOS Markdown reader. It is derived from [Glim](https://github.com/yeduk3/Glim) by yeduk3, also MIT; that copyright stays in [LICENSE](LICENSE). Third-party notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+[MIT](LICENSE) © 2026 Zhengyx. MapleDown is my macOS Markdown reader. It is derived from [Glim](https://github.com/yeduk3/Glim) by yeduk3, also MIT; that copyright stays in [LICENSE](LICENSE). Third-party notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 The Quick Look preview follows the data-based approach documented by [QLMarkdown](https://github.com/sbarex/QLMarkdown) (GPL-3.0). That project is not included in the app. Rendering uses [markdown-it](https://github.com/markdown-it/markdown-it), [KaTeX](https://katex.org), [highlight.js](https://highlightjs.org), and [markdown-it-texmath](https://github.com/goessner/markdown-it-texmath).

@@ -8,7 +8,7 @@ import os
 /// JavaScriptCore and hands it to Quick Look's own HTML renderer — no WKWebView /
 /// WebContent (which cannot spawn in the QL preview sandbox).
 class MarkdownPreviewProvider: NSViewController, QLPreviewingController {
-    private static let log = Logger(subsystem: "io.github.zzzyx28.leaflight.ql", category: "provider")
+    private static let log = Logger(subsystem: "io.github.zzzyx28.mapledown.ql", category: "provider")
 
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 1, height: 1))

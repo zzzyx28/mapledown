@@ -1,4 +1,4 @@
-/* Leaflight heading anchors — GitHub-style slugged ids for h1–h6.
+/* MapleDown heading anchors — GitHub-style slugged ids for h1–h6.
    markdown-it emits no heading ids, so in-document links like [x](#section) are dead.
    This plugin adds id="slug" to every heading so the fragment scroll works (app WKWebView
    and the Quick Look extension share it). Loaded before render.js; also used by JSRenderer.
@@ -32,8 +32,8 @@
     return inline.content || '';
   }
 
-  global.leaflightAnchors = function (md) {
-    md.core.ruler.push('leaflight_heading_anchors', function (state) {
+  global.mapledownAnchors = function (md) {
+    md.core.ruler.push('mapledown_heading_anchors', function (state) {
       var seen = Object.create(null); // local per parse -> resets each render
       var tokens = state.tokens;
       for (var i = 0; i < tokens.length; i++) {

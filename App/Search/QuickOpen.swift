@@ -35,7 +35,7 @@ final class QuickOpenController: ObservableObject {
 
     // Content search runs off the main thread, debounced, with a generation token so a
     // slow search for an old query can't overwrite the results of a newer one.
-    private let searchQueue = DispatchQueue(label: "io.github.zzzyx28.leaflight.quickopen.content", qos: .utility)
+    private let searchQueue = DispatchQueue(label: "io.github.zzzyx28.mapledown.quickopen.content", qos: .utility)
     private var pendingSearch: DispatchWorkItem?
     private var searchGeneration = 0
     private static let contentMinQuery = 2       // start content search at 2+ chars

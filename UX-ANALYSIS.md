@@ -1,6 +1,6 @@
-# Leaflight UX notes
+# MapleDown UX notes
 
-Leaflight is Zhengyx’s native Markdown reader. The report below is design history: it was written against the Glim-derived codebase in July 2026 and is kept so later changes can see why the editor, outline, and Quick Look work the way they do. Glim stays named here as that upstream. The MIT notice and original copyright live in [LICENSE](LICENSE).
+MapleDown is Zhengyx’s native Markdown reader. The report below is design history: it was written against the Glim-derived codebase in July 2026 and is kept so later changes can see why the editor, outline, and Quick Look work the way they do. Glim stays named here as that upstream. The MIT notice and original copyright live in [LICENSE](LICENSE).
 
 # Glim UX 개선 분석 보고서
 

@@ -3,8 +3,8 @@ import AppKit
 import MarkdownEditorKit
 
 @main
-struct LeaflightApp: App {
-    // Routes folder-open events (Finder "Open With" / `open -a Leaflight <dir>` / drag) to a
+struct MapleDownApp: App {
+    // Routes folder-open events (Finder "Open With" / `open -a MapleDown <dir>` / drag) to a
     // sidebar browser; forwards file opens to the normal document pipeline. See FolderBrowser.swift.
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 

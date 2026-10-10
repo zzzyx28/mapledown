@@ -1,4 +1,4 @@
-name: Leaflight
+name: MapleDown
 options:
   bundleIdPrefix: io.github.zzzyx28
   deploymentTarget:
@@ -21,7 +21,7 @@ packages:
     url: https://github.com/yeduk3/MarkdownEditorKit.git
     from: 1.1.1
 targets:
-  Leaflight:
+  MapleDown:
     type: application
     platform: macOS
     sources:
@@ -40,17 +40,17 @@ targets:
         buildPhase: resources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: io.github.zzzyx28.leaflight
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.zzzyx28.mapledown
         INFOPLIST_FILE: App/Info.plist
         COMBINE_HIDPI_IMAGES: "YES"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       configs:
         # Debug uses a separate bundle id so local/Xcode builds in DerivedData never
-        # share io.github.zzzyx28.leaflight with the installed /Applications release. Same-id duplicates
+        # share io.github.zzzyx28.mapledown with the installed /Applications release. Same-id duplicates
         # make pkd reject one Quick Look plug-in (silently killing preview) and let
         # Launch Services flip the .md handler to a transient build copy.
         Debug:
-          PRODUCT_BUNDLE_IDENTIFIER: io.github.zzzyx28.leaflight.debug
+          PRODUCT_BUNDLE_IDENTIFIER: io.github.zzzyx28.mapledown.debug
     dependencies:
       - target: QuickLookExtension
         embed: true
@@ -70,11 +70,11 @@ targets:
         buildPhase: resources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: io.github.zzzyx28.leaflight.QuickLookExtension
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.zzzyx28.mapledown.QuickLookExtension
         PRODUCT_MODULE_NAME: QuickLookExtension
         INFOPLIST_FILE: QuickLook/Info.plist
         CODE_SIGN_ENTITLEMENTS: QuickLook/QuickLook.entitlements
       configs:
-        # Must stay prefixed by the host app id (io.github.zzzyx28.leaflight.debug) for Debug.
+        # Must stay prefixed by the host app id (io.github.zzzyx28.mapledown.debug) for Debug.
         Debug:
-          PRODUCT_BUNDLE_IDENTIFIER: io.github.zzzyx28.leaflight.debug.QuickLookExtension
+          PRODUCT_BUNDLE_IDENTIFIER: io.github.zzzyx28.mapledown.debug.QuickLookExtension

@@ -7,7 +7,7 @@ import SwiftUI
 final class FullWidthMode: ObservableObject {
     static let shared = FullWidthMode()
 
-    private static let key = "leaflight.fullWidth"
+    private static let key = "mapledown.fullWidth"
 
     @Published private(set) var isFullWidth: Bool
 

@@ -1,4 +1,4 @@
-/* Leaflight task lists — GitHub-style clickable checkboxes for `- [ ] x` / `- [x] x`.
+/* MapleDown task lists — GitHub-style clickable checkboxes for `- [ ] x` / `- [x] x`.
    Stock markdown-it has no task-list support (it renders the literal "[ ] x"), so this
    core-ruler plugin rewrites list items whose text starts with a `[ ]`/`[x]` marker into
    <li class="task-item"><input type="checkbox" …>…. The app WKWebView and the Quick Look
@@ -22,12 +22,12 @@
     token.attrSet('class', existing ? existing + ' ' + cls : cls);
   }
 
-  global.leaflightTaskLists = function (md, opts) {
+  global.mapledownTaskLists = function (md, opts) {
     opts = opts || {};
     var interactive = !!opts.interactive;
 
     // Runs after inline parsing so the inline token's children (text runs) exist.
-    md.core.ruler.after('inline', 'leaflight_task_lists', function (state) {
+    md.core.ruler.after('inline', 'mapledown_task_lists', function (state) {
       var tokens = state.tokens;
       for (var i = 2; i < tokens.length; i++) {
         if (!isInline(tokens[i])) continue;
