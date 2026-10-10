@@ -1,0 +1,166 @@
+/* Leaflight rendered-markdown stylesheet — see DESIGN.md.
+   Colors are macOS semantic system colors so the page matches the native AppKit
+   chrome and tracks light/dark + the user's accent automatically. No hardcoded
+   palette, no prefers-color-scheme block: -apple-system-* and AccentColor resolve
+   per appearance on their own (deployment target macOS 14 / WebKit 17+). */
+:root {
+  --fg:     -apple-system-label;             /* primary text   (NSColor.labelColor) */
+  --fg-2:   -apple-system-secondary-label;   /* muted text     (.secondaryLabelColor) */
+  --fg-3:   -apple-system-tertiary-label;    /* faint text     (.tertiaryLabelColor) */
+  --bg:     -apple-system-text-background;    /* page surface   (.textBackgroundColor) */
+  --border: -apple-system-separator;         /* hairlines      (.separatorColor) */
+  --accent: AccentColor;                      /* links          (system accent) */
+  --fill:   color-mix(in srgb, var(--fg) 6%, transparent);  /* subtle block fill */
+  --fill-2: color-mix(in srgb, var(--fg) 9%, transparent);  /* table header fill */
+}
+
+html, body { margin: 0; padding: 0; background: var(--bg); }
+body {
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.65;
+  text-wrap: pretty;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+#content {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 48px 40px 128px;
+  word-wrap: break-word;
+}
+/* Full-width toggle: fill the viewport instead of the capped measure. The transition
+   (enabled only after first paint via body.anim, so opening a saved-full-width doc
+   doesn't animate from the default measure) gives a smooth grow/shrink on toggle. */
+body.anim #content { transition: max-width 0.22s ease; }
+body.full-width #content { max-width: 100%; }
+
+/* Headings: hierarchy from size + weight + tier, never rules. Top margin > bottom
+   margin so a heading binds to the content it introduces (see DESIGN.md §3). */
+#content h1, #content h2, #content h3, #content h4, #content h5, #content h6 {
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 1.5em 0 0.5em;
+  scroll-margin-top: 28px;
+}
+#content h1 { font-size: 2em;    font-weight: 700; letter-spacing: -0.01em; }
+#content h2 { font-size: 1.5em;  font-weight: 700; }
+#content h3 { font-size: 1.25em; }
+#content h4 { font-size: 1.05em; }
+#content h5 { font-size: 1em;    color: var(--fg-2); }
+#content h6 { font-size: .85em;  color: var(--fg-3); text-transform: uppercase; letter-spacing: .04em; }
+#content h1:first-child, #content h2:first-child, #content h3:first-child { margin-top: 0; }
+
+#content p { margin: 0 0 1em; }
+#content a { color: var(--accent); text-decoration: none; }
+#content a:hover { text-decoration: underline; }
+#content strong { font-weight: 600; }
+
+#content ul, #content ol { padding-left: 1.7em; margin: 0 0 1em; }
+#content li { margin: .2em 0; }
+#content li > ul, #content li > ol { margin: .2em 0; }
+#content li::marker { color: var(--fg-3); }
+
+#content blockquote {
+  margin: 0 0 1em;
+  padding: .1em 1em;
+  color: var(--fg-2);
+  border-left: 3px solid var(--border);
+}
+
+#content code {
+  font-family: "SF Mono", ui-monospace, "Menlo", monospace;
+  font-size: .88em;
+  background: var(--fill);
+  padding: .15em .4em;
+  border-radius: 5px;
+}
+#content pre {
+  background: var(--fill);
+  padding: 14px 16px;
+  border-radius: 8px;
+  overflow: auto;
+  margin: 0 0 1em;
+  line-height: 1.5;
+}
+#content pre code { background: none; padding: 0; font-size: .85em; }
+
+#content table {
+  border-collapse: collapse;
+  margin: 0 0 1em;
+  display: block;
+  overflow: auto;
+  width: max-content;
+  max-width: 100%;
+}
+#content th, #content td { border: 1px solid var(--border); padding: 6px 13px; }
+#content th { font-weight: 600; background: var(--fill-2); }
+#content tr:nth-child(2n) td { background: var(--fill); }
+
+#content img { max-width: 100%; height: auto; }
+
+/* Broken/missing local image -> labelled placeholder (built in render.js). A box is a
+   deliberate last resort here (DESIGN.md §2): it must read as absent content, not styled
+   text. Subtle fill + dashed hairline signals "nothing loaded"; label secondary, hint fainter. */
+#content .leaflight-missing-image {
+  display: inline-flex;
+  flex-direction: column;
+  gap: .1em;
+  padding: .5em .8em;
+  background: var(--fill);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  vertical-align: middle;
+}
+#content .leaflight-missing-label { color: var(--fg-2); font-size: .9em; }
+#content .leaflight-missing-hint  { color: var(--fg-3); font-size: .75em; }
+#content hr { height: 1px; border: 0; background: var(--border); margin: 2em 0; }
+
+#content blockquote > :last-child,
+#content li > :last-child { margin-bottom: 0; }
+
+/* texmath: inline math => <eqn>..</eqn>, display math => <section><eqn>..</eqn></section> */
+#content section { overflow-x: auto; overflow-y: hidden; }
+#content section eqn { display: block; }
+.katex-display { margin: 1em 0; }
+.katex { font-size: 1.05em; }
+
+/* task lists (checkbox accent is the system default in WebKit). The marker is replaced
+   by the checkbox, so drop the list bullet on task items. */
+#content .task-item { list-style: none; }
+#content input[type="checkbox"] { margin-right: .4em; }
+
+/* Code-block copy button (A4): one floating control that follows the hovered <pre>
+   (built in render.js). System-colored (same vars as the chrome), caption-sized, and
+   only visible while hovering the block — quiet by default (DESIGN.md §5). */
+.leaflight-copy-btn {
+  position: absolute;
+  transform: translateX(-100%);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--fg-2);
+  background: var(--fill);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 4px 8px;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+.leaflight-copy-btn.visible { opacity: 1; pointer-events: auto; }
+.leaflight-copy-btn:hover { background: var(--fill-2); }
+
+/* Print / Export as PDF (D1): let the document use the full page, keep atomic blocks
+   from splitting across pages, and drop the interactive-only copy button. */
+@media print {
+  .leaflight-copy-btn { display: none !important; }
+  #content { max-width: none; margin: 0; padding: 0; }
+  #content pre, #content table, #content blockquote,
+  #content img, #content .katex-display { break-inside: avoid; }
+  #content h1, #content h2, #content h3, #content h4, #content h5, #content h6 {
+    break-after: avoid;
+  }
+}
