@@ -47,15 +47,22 @@ final class WelcomeWindowController: NSWindowController {
     static let shared = WelcomeWindowController()
     static var isArmed = false
     static var isQuitting = false
-    static var isEmptyLaunch = false
     private var openingURLs = false
 
     static func show() { shared.orderFront() }
-    static func close() { shared.window?.orderOut(nil) }
-    static func isWelcome(_ window: NSWindow) -> Bool { window === shared.window }
+    static func close() {
+        for window in NSApp.windows where isWelcome(window) { window.orderOut(nil) }
+    }
+    static func isWelcome(_ window: NSWindow) -> Bool {
+        window === shared.window || window.identifier?.rawValue == "mapledown.welcome"
+    }
     static func noteOpeningURLs() {
         shared.openingURLs = true
-        isEmptyLaunch = false
+    }
+
+    func showAfterOpenFailure() {
+        openingURLs = false
+        showIfLaunchingIdle()
     }
 
     private init() {
@@ -86,15 +93,15 @@ final class WelcomeWindowController: NSWindowController {
         NSApp.activate()
     }
 
-    private func newMarkdown() {
+    func newMarkdown() {
         NSDocumentController.shared.newDocument(nil)
-        window?.orderOut(nil)
+        Self.close()
     }
 
-    private func openExisting() {
+    func openExisting() {
         NSDocumentController.shared.openDocument(nil)
         let opened = NSDocumentController.shared.documents.contains { $0.fileURL != nil }
-        if opened { window?.orderOut(nil) }
+        if opened { Self.close() }
     }
 
     /// Called after AppKit's empty-launch request and after launch settles. A blank
@@ -107,16 +114,26 @@ final class WelcomeWindowController: NSWindowController {
         for doc in NSDocumentController.shared.documents where doc.fileURL == nil && !doc.isDocumentEdited {
             doc.close()
         }
-        if NSDocumentController.shared.documents.isEmpty {
-            // DocumentGroup may already have presented its automatic Open panel.
-            // This is the empty-launch path only; dismiss that panel before showing
-            // our welcome window, leaving user-initiated Open panels untouched.
-            for panel in NSApp.windows.compactMap({ $0 as? NSOpenPanel }) where panel.isVisible {
-                panel.cancel(nil)
-            }
+        let otherWindowVisible = NSApp.windows.contains {
+            $0.isVisible && !Self.isWelcome($0)
+        }
+        if NSDocumentController.shared.documents.isEmpty && !otherWindowVisible {
             orderFront()
         }
-        Self.isEmptyLaunch = false
         Self.isArmed = true
+    }
+}
+
+/// Marks the SwiftUI launch scene so the AppDelegate can treat it exactly like
+/// the AppKit fallback Welcome window when a document becomes active.
+struct WelcomeWindowTagger: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { TagView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class TagView: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            window?.identifier = NSUserInterfaceItemIdentifier("mapledown.welcome")
+        }
     }
 }

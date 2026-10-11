@@ -6,31 +6,15 @@ import AppKit
 /// get a sidebar-only browser window; everything else is handed to the normal document
 /// pipeline so plain `.md` opening keeps working unchanged.
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    // Handle AppKit's empty-launch request with Welcome. DocumentGroup may also
-    // show its own picker, which the launch window observer dismisses below.
+    // The first SwiftUI scene owns the welcome window. Suppress an untitled
+    // document request on an empty launch.
     func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
-        return true
-    }
-
-    func applicationOpenUntitledFile(_ sender: NSApplication) -> Bool {
-        WelcomeWindowController.isEmptyLaunch = true
-        DispatchQueue.main.async { WelcomeWindowController.shared.showIfLaunchingIdle() }
-        return true
+        return false
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        WelcomeWindowController.isEmptyLaunch = true
         NotificationCenter.default.addObserver(
             forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main) { note in
-            if let panel = note.object as? NSOpenPanel,
-               WelcomeWindowController.isEmptyLaunch {
-                WelcomeWindowController.isEmptyLaunch = false
-                DispatchQueue.main.async {
-                    panel.cancel(nil)
-                    WelcomeWindowController.shared.showIfLaunchingIdle()
-                }
-                return
-            }
             guard WelcomeWindowController.isArmed,
                   let window = note.object as? NSWindow,
                   !WelcomeWindowController.isWelcome(window),
@@ -56,10 +40,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
-        // DocumentGroup can open its own picker without consulting the untitled
-        // delegate hooks. Give incoming file events time to register before
-        // presenting Welcome for an otherwise idle launch.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+        // Let initial open-file events register before showing an idle Welcome.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             WelcomeWindowController.shared.showIfLaunchingIdle()
         }
     }
@@ -97,12 +79,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func application(_ application: NSApplication, open urls: [URL]) {
         WelcomeWindowController.noteOpeningURLs()
+        var unsupported: [String] = []
         for url in urls {
             if isDirectory(url) {
                 FolderBrowserWindowController.show(folder: url)
+            } else if FileEntry.isMarkdown(url) {
+                MarkdownDocumentOpener.open(url)
             } else {
-                NSDocumentController.shared.openDocument(withContentsOf: url, display: true) { _, _, _ in }
+                unsupported.append(url.lastPathComponent)
             }
+        }
+        if !unsupported.isEmpty {
+            let alert = NSAlert()
+            alert.messageText = "Unsupported File"
+            alert.informativeText = "MapleDown opens Markdown files only: " + unsupported.joined(separator: ", ")
+            alert.runModal()
+            WelcomeWindowController.shared.showAfterOpenFailure()
         }
     }
 
@@ -155,7 +147,7 @@ private struct FolderBrowser: View {
             SidebarView(rootURL: folder, currentFile: nil,
                         tree: tree, sidebar: sidebar, detailFocus: detailFocus,
                         openFile: { url in
-                            NSDocumentController.shared.openDocument(withContentsOf: url, display: true) { _, _, _ in }
+                            MarkdownDocumentOpener.open(url)
                         })
                 .navigationSplitViewColumnWidth(min: 180, ideal: 240, max: 420)
         } detail: {

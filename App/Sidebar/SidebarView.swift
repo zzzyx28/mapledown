@@ -29,10 +29,9 @@ final class SidebarController: ObservableObject {
     @Published var renameText = ""
     /// Bumped to move keyboard focus into the list (⌘⇧E, or after a rename commits).
     @Published var focusPulse = 0
-    /// Set by the key monitor (Space / ⌘↓) and row clicks to ask SwiftUI to open a
-    /// file; SwiftUI owns `openDocument`, the AppKit monitor doesn't, so it routes
-    /// through here. `focusDetail` distinguishes ⌘↓/click (move focus to the file
-    /// view) from Space (preview, keep focus in the sidebar). `token` makes a repeat
+    /// Set by the key monitor (Space / ⌘↓) to ask SwiftUI to open a file.
+    /// `focusDetail` distinguishes ⌘↓ (move focus to the file view) from Space
+    /// (preview, keep focus in the sidebar). `token` makes a repeat
     /// of the same request still fire `onChange`.
     @Published var openRequest: OpenRequest?
     /// The List's backing outline view, captured by the keyboard bridge so the key
@@ -64,9 +63,8 @@ struct SidebarView: View {
     @ObservedObject var tree: FileTreeModel
     @ObservedObject var sidebar: SidebarController
     @ObservedObject var detailFocus: DetailFocusController
-    /// How to open a chosen file. ContentView wraps the SwiftUI `openDocument` action; the
-    /// folder-browser window (no document scene, so no `openDocument` env) routes through
-    /// NSDocumentController instead. Root-parking around the call stays in this view.
+    /// Opens a chosen Markdown file through the document controller. Root-parking
+    /// around the call stays in this view.
     let openFile: (URL) -> Void
     /// Show the small New File button in the section header. ContentView hides it (it has a
     /// full-size New File toolbar button); the folder-browser window keeps it.
@@ -143,7 +141,8 @@ struct SidebarView: View {
             Section {
                 ForEach(FileEntry.children(of: rootURL)) { entry in
                     FileRow(entry: entry, root: rootURL, currentFile: currentFile,
-                            tree: tree, sidebar: sidebar, openFile: openFile)
+                            tree: tree, sidebar: sidebar,
+                            activateFile: { activate($0, focusDetail: true) })
                 }
             } header: {
                 HStack {
@@ -202,8 +201,11 @@ struct SidebarView: View {
             if focusDetail { detailFocus.focus() } else { sidebar.focus() }
             return
         }
+        // Space previews Markdown only. Opening another file type requires an
+        // explicit double-click or ⌘↓, so a selection change cannot launch Finder
+        // or an unrelated app.
         guard FileEntry.isMarkdown(url) else {
-            NSWorkspace.shared.open(url)   // hand non-markdown to its default app
+            if focusDetail { NSWorkspace.shared.open(url) }
             return
         }
         // Opening may switch to another tab; park the focus intent for the destination
@@ -335,7 +337,7 @@ private struct FileRow: View {
     let currentFile: URL?
     @ObservedObject var tree: FileTreeModel
     @ObservedObject var sidebar: SidebarController
-    let openFile: (URL) -> Void
+    let activateFile: (URL) -> Void
     @ObservedObject private var expansion = SidebarExpansion.shared
 
     @State private var children: [FileEntry] = []
@@ -358,7 +360,7 @@ private struct FileRow: View {
     var body: some View {
         if entry.isDirectory {
             DisclosureGroup(isExpanded: expandedBinding) {
-                ForEach(children) { FileRow(entry: $0, root: root, currentFile: currentFile, tree: tree, sidebar: sidebar, openFile: openFile) }
+                ForEach(children) { FileRow(entry: $0, root: root, currentFile: currentFile, tree: tree, sidebar: sidebar, activateFile: activateFile) }
             } label: {
                 if isRenaming {
                     renameField
@@ -378,22 +380,38 @@ private struct FileRow: View {
             Group {
                 if isRenaming {
                     renameField
+                } else if entry.isMarkdown {
+                    fileLabel
+                        .onTapGesture {
+                            sidebar.selection = entry.url
+                            activateFile(entry.url)
+                        }
+                        .help("Open Markdown")
                 } else {
-                    Label {
-                        Text(entry.name).lineLimit(1)
-                    } icon: {
-                        Image(systemName: entry.isMarkdown ? "doc.text" : "doc")
-                            .foregroundStyle(entry.isMarkdown ? Color.accentColor : Color.secondary)
-                    }
-                    .contentShape(Rectangle())
-                    // The AppKit bridge opens on mouse-up, including a click on a row
-                    // that was already selected. Arrow keys only move the selection.
+                    fileLabel
+                        .onTapGesture {
+                            sidebar.selection = entry.url
+                            sidebar.focus()
+                        }
+                        .onTapGesture(count: 2) { NSWorkspace.shared.open(entry.url) }
+                        .help("Double-click to open in the default app")
                 }
             }
             .tag(entry.url)
             .fontWeight(isCurrent ? .semibold : .regular)
             .contextMenu { rowMenu(newFileTarget: entry.url.deletingLastPathComponent()) }
         }
+    }
+
+    private var fileLabel: some View {
+        Label {
+            Text(entry.name).lineLimit(1)
+        } icon: {
+            Image(systemName: entry.isMarkdown ? "doc.text" : "doc")
+                .foregroundStyle(entry.isMarkdown ? Color.accentColor : Color.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
     }
 
     /// Inline editor shown in place of the row label while renaming.
@@ -411,6 +429,9 @@ private struct FileRow: View {
     @ViewBuilder private func rowMenu(newFileTarget: URL) -> some View {
         Button("New File") { newFile(in: newFileTarget) }
         Button("Rename") { sidebar.beginRename(entry.url) }
+        if !entry.isDirectory && !entry.isMarkdown {
+            Button("Open in Default App") { NSWorkspace.shared.open(entry.url) }
+        }
         if !entry.isDirectory && entry.isMarkdown {
             Button("Copy") { copyFileToPasteboard(entry.url) }
         }
@@ -448,9 +469,9 @@ private struct FileRow: View {
     private func newFile(in dir: URL) {
         guard let url = FileEntry.makeNewFile(in: dir) else { return }
         if entry.isDirectory { expansion.expanded.insert(entry.url) }
-        if let root { OpenRootRouter.shared.roots[url.standardizedFileURL] = root }
         tree.reload()
-        openFile(url)
+        sidebar.selection = url
+        activateFile(url)
     }
 
 }
@@ -550,7 +571,8 @@ struct FileEntry: Identifiable {
 ///      never sees them — a local key monitor intercepts Space / ⌘↓ / Return and
 ///      routes them to the controller (open / begin-rename) before the view reacts.
 /// The monitor is scoped to this tab via `controller.outlineView`, so other tabs'
-/// monitors ignore the event.
+/// monitors ignore the event. Mouse clicks are handled by each row's own URL;
+/// inferring a URL from the selected row in a global event monitor is racy.
 private struct SidebarKeyboardBridge: NSViewRepresentable {
     let controller: SidebarController
     let pulse: Int
@@ -560,7 +582,6 @@ private struct SidebarKeyboardBridge: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         context.coordinator.lastPulse = pulse
         let v = NSView()
-        context.coordinator.bridgeView = v   // its `.window` scopes the mouse monitor to this tab
         return v
     }
 
@@ -577,10 +598,6 @@ private struct SidebarKeyboardBridge: NSViewRepresentable {
     final class Coordinator {
         private let controller: SidebarController
         private var monitor: Any?
-        private var mouseMonitor: Any?
-        private var mouseUpMonitor: Any?
-        private var pressedRow: Int?
-        weak var bridgeView: NSView?
         var lastPulse = -1
 
         init(controller: SidebarController) {
@@ -593,48 +610,11 @@ private struct SidebarKeyboardBridge: NSViewRepresentable {
                 guard let self else { return event }
                 return self.handle(event)
             }
-            mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
-                self?.pressedRow = self?.clickedRow(event)
-                return event
-            }
-            mouseUpMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseUp) { [weak self] event in
-                guard let self else { return event }
-                let row = self.clickedRow(event)
-                if let row, row == self.pressedRow {
-                    // The outline updates SwiftUI's selection on mouse-down. Defer until
-                    // that update has reached the controller, then open even if the same
-                    // row was selected before this click.
-                    DispatchQueue.main.async { [weak self] in
-                        guard let self, let outline = self.controller.outlineView as? NSTableView,
-                              outline.selectedRow == row,
-                              let url = self.controller.selection else { return }
-                        self.controller.requestOpen(url, focusDetail: true)
-                    }
-                }
-                self.pressedRow = nil
-                return event
-            }
         }
 
         func removeMonitor() {
             if let monitor { NSEvent.removeMonitor(monitor) }
-            if let mouseMonitor { NSEvent.removeMonitor(mouseMonitor) }
-            if let mouseUpMonitor { NSEvent.removeMonitor(mouseUpMonitor) }
             monitor = nil
-            mouseMonitor = nil
-            mouseUpMonitor = nil
-        }
-
-        /// Returns the row under a click in this tab's file tree. The matching
-        /// mouse-up is the activation; drags and clicks outside a row do nothing.
-        private func clickedRow(_ event: NSEvent) -> Int? {
-            guard let win = bridgeView?.window, event.window === win,
-                  let outline = Self.fileTable(near: bridgeView) else { return nil }
-            controller.outlineView = outline   // also captures it without needing a ⌘⇧E focus first
-            let p = outline.convert(event.locationInWindow, from: nil)
-            guard outline.bounds.contains(p) else { return nil }
-            let row = outline.row(at: p)
-            return row >= 0 ? row : nil
         }
 
         /// Makes this tab's file-tree outline view first responder (deferred so a
@@ -656,7 +636,11 @@ private struct SidebarKeyboardBridge: NSViewRepresentable {
         /// Prefers the table whose frame contains the bridge; otherwise the nearest one.
         private static func fileTable(near anchor: NSView?) -> NSTableView? {
             guard let anchor, let root = anchor.window?.contentView else { return nil }
-            let point = anchor.convert(anchor.bounds, to: nil).origin
+            // SwiftUI places this background view behind the file List. Its
+            // bottom-left origin can sit next to the outline pane's table;
+            // sample the center so a split sidebar never focuses the wrong List.
+            let point = anchor.convert(
+                CGPoint(x: anchor.bounds.midX, y: anchor.bounds.midY), to: nil)
             var containing: (table: NSTableView, area: CGFloat)?
             var nearest: (table: NSTableView, distance: CGFloat)?
             func walk(_ view: NSView) {

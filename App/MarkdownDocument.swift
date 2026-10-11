@@ -10,7 +10,7 @@ struct MarkdownDocument: FileDocument {
 
     init(text: String = "") { self.text = text }
 
-    static var readableContentTypes: [UTType] { [.markdown, .plainText] }
+    static var readableContentTypes: [UTType] { [.markdown] }
     static var writableContentTypes: [UTType] { [.markdown] }
 
     init(configuration: ReadConfiguration) throws {

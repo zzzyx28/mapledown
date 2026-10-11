@@ -101,6 +101,7 @@ It bumps `MARKETING_VERSION`/`CURRENT_PROJECT_VERSION` in `project.yml`, reads t
 | Previous / next heading | `⌃⌥↑` / `⌃⌥↓` |
 | Show outline inspector | `⌃⌘1` |
 | Open file as tab | Click a Markdown file in the sidebar (same folder ⇒ tab) |
+| Browse other files | Click to select; double-click to open in their default app |
 | Next / previous tab | `⌘⌥→` / `⌘⌥←` |
 | Jump to tab _n_ | `⌘1` … `⌘9` |
 | Open line below / above in raw editor | `⌘↩` / `⇧⌘↩` |
