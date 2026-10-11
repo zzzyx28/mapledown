@@ -42,11 +42,6 @@ final class SidebarController: ObservableObject {
     struct OpenRequest: Equatable { let url: URL; let focusDetail: Bool; let token: Int }
     private var openToken = 0
 
-    /// True when the *next* selection change is being driven by a sidebar mouse click
-    /// (set by the bridge's mouse monitor, cleared by any keypress). Lets the selection
-    /// `onChange` open on click while leaving arrow-key navigation as plain selection.
-    var selectionFromClick = false
-
     func focus() { focusPulse &+= 1 }
     func requestOpen(_ url: URL, focusDetail: Bool) {
         openToken &+= 1
@@ -185,11 +180,6 @@ struct SidebarView: View {
         // Keep the visible selection on the file this tab is showing, so
         // switching tabs never leaves a stale row highlighted from another tab.
         .onChange(of: currentFile) { _, f in sidebar.selection = f }
-        .onChange(of: sidebar.selection) { _, s in
-            guard sidebar.selectionFromClick else { return }
-            sidebar.selectionFromClick = false
-            if let s { sidebar.requestOpen(s, focusDetail: true) }
-        }
     }
 
     private func newFile(in dir: URL) {
@@ -223,6 +213,7 @@ struct SidebarView: View {
         // the same tree, instead of re-rooting at the subfolder / opening a new window.
         if let rootURL { OpenRootRouter.shared.roots[url.standardizedFileURL] = rootURL }
         sidebar.captureScroll(root: rootURL)
+        if OpenDocumentRouter.showExisting(url) { return }
         openFile(url)
     }
 }
@@ -395,9 +386,8 @@ private struct FileRow: View {
                             .foregroundStyle(entry.isMarkdown ? Color.accentColor : Color.secondary)
                     }
                     .contentShape(Rectangle())
-                    // Opening on click is handled in SidebarView's `selection` onChange (a
-                    // SwiftUI TapGesture here was intermittently swallowed by the table's
-                    // own mouse tracking, so a click would select the row but not open it).
+                    // The AppKit bridge opens on mouse-up, including a click on a row
+                    // that was already selected. Arrow keys only move the selection.
                 }
             }
             .tag(entry.url)
@@ -588,6 +578,8 @@ private struct SidebarKeyboardBridge: NSViewRepresentable {
         private let controller: SidebarController
         private var monitor: Any?
         private var mouseMonitor: Any?
+        private var mouseUpMonitor: Any?
+        private var pressedRow: Int?
         weak var bridgeView: NSView?
         var lastPulse = -1
 
@@ -599,39 +591,50 @@ private struct SidebarKeyboardBridge: NSViewRepresentable {
                 // into `?? event` — that would re-dispatch the swallowed key. Only fall
                 // back to passing the event through when `self` is gone.
                 guard let self else { return event }
-                // Any keypress in this tab means the *next* selection change is keyboard
-                // navigation, not a click — so it must not open. (Set before the outline
-                // view processes an arrow key and moves the selection.)
-                if event.window === self.bridgeView?.window { self.controller.selectionFromClick = false }
                 return self.handle(event)
             }
-            // A reliable click signal the flaky SwiftUI row TapGesture couldn't provide:
-            // the outline view always updates `selection` on mouseDown, but the gesture's
-            // onEnded was intermittently swallowed by the table's own tracking. Marking the
-            // click here lets the selection `onChange` open it.
             mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
-                self?.noteSidebarClick(event)
-                return event   // observe only; never swallow
+                self?.pressedRow = self?.clickedRow(event)
+                return event
+            }
+            mouseUpMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseUp) { [weak self] event in
+                guard let self else { return event }
+                let row = self.clickedRow(event)
+                if let row, row == self.pressedRow {
+                    // The outline updates SwiftUI's selection on mouse-down. Defer until
+                    // that update has reached the controller, then open even if the same
+                    // row was selected before this click.
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self, let outline = self.controller.outlineView as? NSTableView,
+                              outline.selectedRow == row,
+                              let url = self.controller.selection else { return }
+                        self.controller.requestOpen(url, focusDetail: true)
+                    }
+                }
+                self.pressedRow = nil
+                return event
             }
         }
 
         func removeMonitor() {
             if let monitor { NSEvent.removeMonitor(monitor) }
             if let mouseMonitor { NSEvent.removeMonitor(mouseMonitor) }
+            if let mouseUpMonitor { NSEvent.removeMonitor(mouseUpMonitor) }
             monitor = nil
             mouseMonitor = nil
+            mouseUpMonitor = nil
         }
 
-        /// Flags a left click that lands on a row of *this* tab's sidebar outline view, so
-        /// the resulting selection change opens the file. Scoped to this tab's window and
-        /// the outline's bounds so detail-pane / header / empty-area clicks don't open.
-        private func noteSidebarClick(_ event: NSEvent) {
+        /// Returns the row under a click in this tab's file tree. The matching
+        /// mouse-up is the activation; drags and clicks outside a row do nothing.
+        private func clickedRow(_ event: NSEvent) -> Int? {
             guard let win = bridgeView?.window, event.window === win,
-                  let outline = Self.fileTable(near: bridgeView) else { return }
+                  let outline = Self.fileTable(near: bridgeView) else { return nil }
             controller.outlineView = outline   // also captures it without needing a ⌘⇧E focus first
             let p = outline.convert(event.locationInWindow, from: nil)
-            guard outline.bounds.contains(p), outline.row(at: p) >= 0 else { return }
-            controller.selectionFromClick = true
+            guard outline.bounds.contains(p) else { return nil }
+            let row = outline.row(at: p)
+            return row >= 0 ? row : nil
         }
 
         /// Makes this tab's file-tree outline view first responder (deferred so a
