@@ -55,6 +55,8 @@ Toggle with `⌘E` — *View* renders KaTeX math, tables, and highlighted code; 
 
 Download the latest `.dmg` from this repository's **Releases** page, open it, and drag **MapleDown** to `/Applications`.
 
+Current release builds are ad-hoc signed and not Apple notarized. If macOS blocks the first launch, Control-click **MapleDown.app** and choose **Open**, or allow it in **System Settings → Privacy & Security**.
+
 Launch it once to register the Quick Look extension. To make it your default Markdown app: right-click a `.md` → **Get Info** → **Open with** → **MapleDown** → **Change All…**
 
 ### Build from source
