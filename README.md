@@ -1,148 +1,67 @@
 <div align="center">
 
+[中文](README.zh-CN.md)
+
 <img src="assets/icon.png" width="128" alt="MapleDown icon">
 
 # MapleDown
 
-**A minimal, native macOS Markdown editor.**
+**A light Markdown app for Mac. The page comes first.**
 
-Two modes — clean **View** and raw **Edit**. Folder sidebar, offline **LaTeX**, and **Quick Look** previews from Finder.
+Open a file and read. Press `⌘E` when you want the source. Nothing else asks for your attention.
 
 ![platform](https://img.shields.io/badge/platform-macOS%2014%2B-blue)
-![swift](https://img.shields.io/badge/Swift-5-orange)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 <br>
 
-<img src="assets/screenshot-view.png" width="860" alt="MapleDown — View mode: sidebar, tabs, rendered Markdown with KaTeX math and syntax-highlighted code">
+<img src="assets/screenshot-view.png" width="860" alt="MapleDown in View: a quiet page, with the folder and outline beside it">
 
 </div>
 
 ---
 
-## View / Edit
+MapleDown is a native Mac app. It stays on your machine, does not sign you in, and does not phone home to render a page. Formulas, tables, and code are drawn locally. The window remembers its size. Light and dark follow the system.
 
-Toggle with `⌘E` — *View* renders KaTeX math, tables, and highlighted code; *Edit* is the raw source with linting. The sidebar shows the file's folder, and same-folder files open as tabs.
+Launch it with nothing open and you get two choices: start a new Markdown file, or open one you already have. Opening a file puts that page in front. Closing the last document brings the start screen back.
 
-| View | Edit |
+| Reading | Writing |
 | :---: | :---: |
 | <img src="assets/screenshot-view.png" alt="View mode"> | <img src="assets/screenshot-edit.png" alt="Edit mode"> |
 
----
+**View** is the document: headings, math, tables, task lists, highlighted code, and a reading time. **Edit** is the text itself. Markdown warnings stay quiet until you want them, and you can hide them from the View menu.
 
-## Features
+The sidebar is the folder you are already in. Click a Markdown file to open it here; files in that folder become tabs, and a file from somewhere else opens in its own window. Other file types stay in the list until you double-click them, which opens them in their own app. Under the files, the outline follows the section you are reading. `⌃⌥↑` and `⌃⌥↓` move between headings.
 
-- 🪶 **Native & minimal** — SwiftUI app, no Electron. Set it as your default `.md` app in Finder.
-- 👁️ **View / Edit** — switch with a single toggle (`⌘E`). View renders cleanly and shows a reading time; Edit is raw text with Markdown warnings you can hide from the View menu.
-- 📐 **LaTeX math** — inline `$E=mc^2$` and display `$$…$$`, rendered offline with [KaTeX](https://katex.org). No network, ever.
-- 🗂 **Folder sidebar** — opening a file shows its parent folder's tree, with the document outline underneath. Jump headings with `⌃⌥↑` / `⌃⌥↓`. Toggle the sidebar with `⌘\` (animated).
-- 🔖 **Smart tabs** — files in the **same folder** open as tabs; files from a **different folder** open in a new window. Jump with `⌘1`–`⌘9`, cycle with `⌘⌥←` / `⌘⌥→`.
-- 👀 **Quick Look** — press <kbd>space</kbd> on any `.md` in Finder for a fully rendered preview (math, tables, syntax-highlighted code).
-- 🎨 **GitHub-style rendering** — tables, task lists, and syntax highlighting via [markdown-it](https://github.com/markdown-it/markdown-it) + [highlight.js](https://highlightjs.org), with automatic light/dark theming.
-- 💾 **Remembers window size** across launches.
-
-## Requirements
-
-- macOS **14 (Sonoma)** or later
-- [Xcode](https://developer.apple.com/xcode/) 15+
-- [XcodeGen](https://github.com/yonyz/XcodeGen) — `brew install xcodegen`
-
-> The web rendering assets (markdown-it, KaTeX, highlight.js) are **vendored** in `App/Resources/web/`, so no `npm install` is needed to build.
+In Finder, select a `.md` file and press <kbd>space</kbd>. Quick Look shows the same rendered page, including math.
 
 ## Install
 
-### Download (prebuilt)
+Requires macOS 14 (Sonoma) or later.
 
-Download the latest `.dmg` from this repository's **Releases** page, open it, and drag **MapleDown** to `/Applications`.
+Download the latest `.dmg` from **[Releases](https://github.com/zzzyx28/mapledown/releases)**, open it, and drag MapleDown to Applications.
 
-Current release builds are ad-hoc signed and not Apple notarized. If macOS blocks the first launch, Control-click **MapleDown.app** and choose **Open**, or allow it in **System Settings → Privacy & Security**.
+The download is not notarized by Apple. If macOS stops the first launch, Control-click MapleDown and choose **Open**, or allow it in **System Settings → Privacy & Security**.
 
-Launch it once to register the Quick Look extension. To make it your default Markdown app: right-click a `.md` → **Get Info** → **Open with** → **MapleDown** → **Change All…**
+Open MapleDown once so Quick Look can register. To make it the default app for Markdown, right-click any `.md` file → **Get Info** → **Open with** → **MapleDown** → **Change All…**
 
-### Build from source
+To remove it, delete MapleDown from Applications, then change the Open With app for `.md` files if you had set it as the default.
 
-```bash
-git clone https://github.com/zzzyx28/mapledown.git
-cd mapledown
-./install.sh
-```
+## Shortcuts
 
-`install.sh` builds a Release version, copies **MapleDown.app** to `/Applications`, registers it with Launch Services, sets it as the default handler for Markdown, and enables the Quick Look extension.
-
-To build without installing:
-
-```bash
-./build.sh            # Release  -> ~/Library/Developer/Xcode/DerivedData/mapledown-build/...
-./build.sh Debug      # Debug
-```
-
-> Builds intentionally target DerivedData **outside** the repo to avoid Spotlight/indexer churn. `build/`, `DerivedData/`, and the generated `MapleDown.xcodeproj` are git-ignored — `project.yml` is the source of truth.
-
-A drag-and-drop disk image is a Mac step: `./package-dmg.sh`. It skips itself on other systems.
-
-### Cut a release
-
-One command does the whole flow — bump version, commit, push, build + sign + notarize, install to `/Applications`, publish the GitHub release, and clean up build artifacts:
-
-```bash
-./ship.sh 1.1.5                                   # prints a plan, asks to confirm
-./ship.sh 1.1.5 -m "release: …" -n notes.md -y    # custom message + notes, no prompt
-```
-
-It bumps `MARKETING_VERSION`/`CURRENT_PROJECT_VERSION` in `project.yml`, reads the Team ID from your Developer ID certificate, and refuses to clobber an existing tag/release. Requires the same signing prerequisites as `release.sh` (a *Developer ID Application* cert and a `notarytool` keychain profile, default `mapledown-notary`). The build/sign/notarize step is `release.sh`; `ship.sh` wraps the git + install + publish + clean around it.
-
-## Usage
-
-| Action | How |
+| | |
 |---|---|
-| Open a file | Double-click a `.md` in Finder (after install), or drag it onto the app |
-| Toggle View / Edit | `⌘E` (or the toolbar switch) |
-| Toggle sidebar | `⌘\` |
+| View / Edit | `⌘E` |
+| Show or hide the sidebar | `⌘\` |
 | Previous / next heading | `⌃⌥↑` / `⌃⌥↓` |
-| Show outline inspector | `⌃⌘1` |
-| Open file as tab | Click a Markdown file in the sidebar (same folder ⇒ tab) |
-| Browse other files | Click to select; double-click to open in their default app |
+| Outline | `⌃⌘1` |
 | Next / previous tab | `⌘⌥→` / `⌘⌥←` |
-| Jump to tab _n_ | `⌘1` … `⌘9` |
-| Open line below / above in raw editor | `⌘↩` / `⇧⌘↩` |
-| Move / duplicate raw-editor lines | `⌥↑` `⌥↓` / `⌥⇧↑` `⌥⇧↓` |
-| Delete raw-editor line(s) | `⇧⌘K` |
-| Toggle HTML comments in raw editor | `⌘/` |
-| Quick Look preview | Select a `.md` in Finder, press <kbd>space</kbd> |
-
-### Make MapleDown the default Markdown app
-
-`install.sh` does this automatically. To set it manually: right-click any `.md` in Finder → **Get Info** → **Open with** → **MapleDown** → **Change All…**
-
-## How it works
-
-- **Editor window** — SwiftUI. *View* mode renders Markdown in a `WKWebView` (markdown-it → HTML, KaTeX for math, highlight.js for code). *Edit* mode is an `NSTextView` with soft-wrap and a small line-based linter.
-- **Quick Look extension** — Finder's QL sandbox won't let a `WKWebView` spawn its WebContent process, so the extension renders Markdown to **fully static HTML in-process with JavaScriptCore** (KaTeX is pre-expanded to HTML + base64-inlined fonts, local images inlined) and returns it as a data-based `QLPreviewReply`. No JavaScript runs at display time. The extension's `Info.plist` sets `QLIsDataBasedPreview`.
-
-## Project layout
-
-```
-App/                     SwiftUI app
-  Viewer/                WKWebView renderer (View mode)
-  Editor/                NSTextView + Markdown linter (Edit mode)
-  Sidebar/               parent-folder file tree
-  Resources/web/         vendored markdown-it · KaTeX · highlight.js · texmath
-QuickLook/               data-based Quick Look preview extension (JavaScriptCore)
-project.yml              XcodeGen project spec
-build.sh / install.sh    build & install scripts
-release.sh / ship.sh     sign+notarize · one-command release (bump→publish→clean)
-```
-
-## Uninstall
-
-```bash
-rm -rf /Applications/MapleDown.app
-```
-
-(Reset the default app for `.md` via Finder → Get Info if desired.)
+| Jump to a tab | `⌘1` … `⌘9` |
+| New line below / above | `⌘↩` / `⇧⌘↩` |
+| Move / duplicate a line | `⌥↑` `⌥↓` / `⌥⇧↑` `⌥⇧↓` |
+| Delete a line | `⇧⌘K` |
+| Comment or uncomment | `⌘/` |
 
 ## License
 
-[MIT](LICENSE) © 2026 Zhengyx. MapleDown is my macOS Markdown reader. It is derived from [Glim](https://github.com/yeduk3/Glim) by yeduk3, also MIT; that copyright stays in [LICENSE](LICENSE). Third-party notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-
-The Quick Look preview follows the data-based approach documented by [QLMarkdown](https://github.com/sbarex/QLMarkdown) (GPL-3.0). That project is not included in the app. Rendering uses [markdown-it](https://github.com/markdown-it/markdown-it), [KaTeX](https://katex.org), [highlight.js](https://highlightjs.org), and [markdown-it-texmath](https://github.com/goessner/markdown-it-texmath).
+[MIT](LICENSE) © 2026 Zhengyx. MapleDown is derived from [Glim](https://github.com/yeduk3/Glim) by yeduk3, also MIT. Third-party notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

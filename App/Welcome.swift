@@ -88,6 +88,15 @@ final class WelcomeWindowController: NSWindowController {
     required init?(coder: NSCoder) { nil }
 
     private func orderFront() {
+        // The SwiftUI launch scene is already a welcome window. Focusing that
+        // one avoids stacking a second, identical AppKit welcome beside it.
+        if let existing = NSApp.windows.first(where: {
+            $0 !== window && $0.isVisible && Self.isWelcome($0)
+        }) {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate()
+            return
+        }
         window?.center()
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate()
@@ -117,7 +126,10 @@ final class WelcomeWindowController: NSWindowController {
         let otherWindowVisible = NSApp.windows.contains {
             $0.isVisible && !Self.isWelcome($0)
         }
-        if NSDocumentController.shared.documents.isEmpty && !otherWindowVisible {
+        let welcomeVisible = NSApp.windows.contains { $0.isVisible && Self.isWelcome($0) }
+        // An untagged SwiftUI welcome still counts as another visible window, so
+        // this does not open the AppKit copy while the launch scene is on screen.
+        if NSDocumentController.shared.documents.isEmpty && !otherWindowVisible && !welcomeVisible {
             orderFront()
         }
         Self.isArmed = true
