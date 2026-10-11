@@ -86,36 +86,50 @@ final class OpenFocusRouter {
     private init() {}
 }
 
-/// SwiftUI's openDocument action does not consistently select an already-open
-/// document tab. Bring its AppKit window forward directly when one exists.
+/// Bring an already-open document's real AppKit window forward. A URL-to-window
+/// cache is unsafe here: DocumentGroup may reuse or move a hosting view between
+/// windows, leaving the cache pointed at the tab we are trying to leave.
 enum OpenDocumentRouter {
-    private final class WindowRef {
-        weak var window: NSWindow?
-        init(_ window: NSWindow) { self.window = window }
-    }
-    private static var windows: [URL: WindowRef] = [:]
-
-    static func register(_ window: NSWindow, for url: URL) {
-        windows[url.standardizedFileURL] = WindowRef(window)
-    }
-
-    static func unregister(_ window: NSWindow, for url: URL) {
-        let key = url.standardizedFileURL
-        if windows[key]?.window === window { windows[key] = nil }
-    }
-
     @discardableResult
     static func showExisting(_ url: URL) -> Bool {
         let key = url.standardizedFileURL
-        let documentWindow = NSDocumentController.shared.document(for: key)?
-            .windowControllers.compactMap(\.window).first
-        guard let window = windows[key]?.window ?? documentWindow else { return false }
+        let documentWindows = NSDocumentController.shared.document(for: key)?
+            .windowControllers.compactMap(\.window) ?? []
+        let documentWindow = documentWindows.first(where: \.isVisible) ?? documentWindows.first
+        let representedWindow = NSApp.windows.first {
+            $0.representedURL?.standardizedFileURL == key
+        }
+        guard let window = documentWindow ?? representedWindow else { return false }
         OpenRootRouter.shared.roots[key] = nil
         if window.isMiniaturized { window.deminiaturize(nil) }
         window.tabGroup?.selectedWindow = window
         window.makeKeyAndOrderFront(nil)
         NSApp.activate()
         return true
+    }
+}
+
+/// One document-opening path for sidebar, folder browser, and Finder events.
+/// AppKit reuses an existing NSDocument and reports read failures to the user.
+enum MarkdownDocumentOpener {
+    static func open(_ url: URL) {
+        if OpenDocumentRouter.showExisting(url) { return }
+        NSDocumentController.shared.openDocument(withContentsOf: url, display: true) {
+            document, _, error in
+            if let error {
+                OpenRootRouter.shared.roots[url.standardizedFileURL] = nil
+                if OpenFocusRouter.shared.pending?.url.standardizedFileURL == url.standardizedFileURL {
+                    OpenFocusRouter.shared.pending = nil
+                }
+                NSApp.presentError(error)
+                WelcomeWindowController.shared.showAfterOpenFailure()
+            } else if let window = document?.windowControllers.compactMap(\.window).first {
+                if window.isMiniaturized { window.deminiaturize(nil) }
+                window.tabGroup?.selectedWindow = window
+                window.makeKeyAndOrderFront(nil)
+                NSApp.activate()
+            }
+        }
     }
 }
 

@@ -43,7 +43,6 @@ struct ContentView: View {
     // Outline-panel jump (A2): a bumped token carries the target source line to the active mode.
     @State private var outlineJumpToken = 0
     @State private var outlineJumpLine: Int?
-    @Environment(\.openDocument) private var openDocument
 
     private var sidebarVisible: Binding<Bool> {
         Binding(
@@ -62,7 +61,7 @@ struct ContentView: View {
                         outlineText: document.text, outlineSync: sync,
                         onOutlineJump: jumpToOutline,
                         tree: tree, sidebar: sidebar, detailFocus: detailFocus,
-                        openFile: { url in Task { try? await openDocument(at: url) } },
+                        openFile: { MarkdownDocumentOpener.open($0) },
                         showsNewFile: false)
                 .navigationSplitViewColumnWidth(min: 180, ideal: 240, max: 420)
         } detail: {
@@ -150,7 +149,7 @@ struct ContentView: View {
         tree.reload()
         sidebar.captureScroll(root: browsingRoot)
         if OpenDocumentRouter.showExisting(url) { return }
-        Task { try? await openDocument(at: url) }
+        MarkdownDocumentOpener.open(url)
     }
 
     /// ⌘⇧O: pick a folder, then raise the quick-open palette rooted there. Opening a file
@@ -263,7 +262,7 @@ struct ContentView: View {
         if let root { OpenRootRouter.shared.roots[url.standardizedFileURL] = root }
         sidebar.captureScroll(root: browsingRoot)
         if OpenDocumentRouter.showExisting(url) { return }
-        Task { try? await openDocument(at: url) }
+        MarkdownDocumentOpener.open(url)
     }
 
     /// ⌘⇧E toggle: if the sidebar already holds keyboard focus, bounce focus to the
@@ -600,10 +599,13 @@ private struct WindowAccessor: NSViewRepresentable {
     /// Fires `onWindow` exactly when the view is placed into its hosting window.
     final class WindowReaderView: NSView {
         var onWindow: ((NSWindow) -> Void)?
-        private var fired = false
+        private weak var attachedWindow: NSWindow?
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            if let w = window, !fired { fired = true; onWindow?(w) }
+            if let window, window !== attachedWindow {
+                attachedWindow = window
+                onWindow?(window)
+            }
         }
     }
 
@@ -635,8 +637,9 @@ private struct WindowAccessor: NSViewRepresentable {
         }
 
         func attach(_ window: NSWindow) {
+            if self.window === window { return }
+            detach()
             self.window = window
-            if let fileURL { OpenDocumentRouter.register(window, for: fileURL) }
             window.tabbingMode = .preferred
             window.tabbingIdentifier = tabID
 
@@ -687,24 +690,24 @@ private struct WindowAccessor: NSViewRepresentable {
 
         func update(fileURL newURL: URL?) {
             guard newURL != fileURL else { return }
-            if let fileURL, let window { OpenDocumentRouter.unregister(window, for: fileURL) }
             fileURL = newURL
-            if let newURL, let window { OpenDocumentRouter.register(window, for: newURL) }
         }
 
         /// An existing live MapleDown window sharing this tab id — registry first, then a
         /// sweep of all app windows in case the registry hasn't caught up yet.
         private func existingHost(excluding window: NSWindow) -> NSWindow? {
-            let match: (NSWindow) -> Bool = { $0 !== window && $0.tabbingIdentifier == self.tabID }
+            let match: (NSWindow) -> Bool = {
+                $0 !== window && $0.isVisible && $0.tabbingIdentifier == self.tabID
+            }
             return Self.registry.allObjects.first(where: match) ?? NSApp.windows.first(where: match)
         }
 
         func detach() {
-            if let fileURL, let window { OpenDocumentRouter.unregister(window, for: fileURL) }
             if let token { NotificationCenter.default.removeObserver(token) }
             if let keyToken { NotificationCenter.default.removeObserver(keyToken) }
             token = nil
             keyToken = nil
+            window = nil
         }
     }
 }

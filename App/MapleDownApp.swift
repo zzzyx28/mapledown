@@ -9,6 +9,18 @@ struct MapleDownApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
+        // The first scene is the launch window. DocumentGroup otherwise presents
+        // its own Open panel before the AppDelegate can dismiss it, causing a
+        // visible Finder-like flash on an empty launch.
+        Window("MapleDown", id: "welcome") {
+            WelcomeView(
+                onNew: { WelcomeWindowController.shared.newMarkdown() },
+                onOpen: { WelcomeWindowController.shared.openExisting() }
+            )
+            .background(WelcomeWindowTagger())
+        }
+        .windowResizability(.contentSize)
+
         DocumentGroup(newDocument: MarkdownDocument()) { config in
             ContentView(document: config.$document, fileURL: config.fileURL)
         }
