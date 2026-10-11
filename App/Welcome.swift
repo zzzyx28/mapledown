@@ -40,24 +40,42 @@ struct WelcomeView: View {
     }
 }
 
-/// One welcome window for the process. Document windows take over once the reader
-/// picks a file; closing the last document brings this back. Closing the welcome
-/// window itself leaves the app running (a dock click shows it again).
-final class WelcomeWindowController: NSWindowController {
+/// One welcome window for the process: the SwiftUI "welcome" scene. Document
+/// windows take over once the reader picks a file; closing the last document
+/// brings this back. Closing the welcome window itself leaves the app running.
+final class WelcomeWindowController {
     static let shared = WelcomeWindowController()
     static var isArmed = false
     static var isQuitting = false
     private var openingURLs = false
+    private var openWelcome: (() -> Void)?
 
-    static func show() { shared.orderFront() }
+    static func bindOpen(_ action: @escaping () -> Void) {
+        shared.openWelcome = action
+    }
+
+    static func show() { shared.present() }
     static func close() {
         for window in NSApp.windows where isWelcome(window) { window.orderOut(nil) }
     }
     static func isWelcome(_ window: NSWindow) -> Bool {
-        window === shared.window || window.identifier?.rawValue == "mapledown.welcome"
+        if window.identifier?.rawValue == "mapledown.welcome" { return true }
+        guard !(window is NSPanel) else { return false }
+        // The tagger runs after the window exists. The launch scene is 440pt wide
+        // and titled MapleDown; document windows are larger and titled with a file.
+        return window.title == "MapleDown" && abs(window.frame.width - 440) < 24
     }
     static func noteOpeningURLs() {
         shared.openingURLs = true
+    }
+
+    /// Dock reopen can restore the SwiftUI scene and also ask us to show a window.
+    /// Keep the one the user is looking at and hide any other welcome.
+    static func collapseDuplicates(preferring key: NSWindow? = nil) {
+        let visible = NSApp.windows.filter { $0.isVisible && isWelcome($0) }
+        guard visible.count > 1 else { return }
+        let primary = visible.first { $0 === key } ?? visible[0]
+        for extra in visible where extra !== primary { extra.orderOut(nil) }
     }
 
     func showAfterOpenFailure() {
@@ -65,41 +83,30 @@ final class WelcomeWindowController: NSWindowController {
         showIfLaunchingIdle()
     }
 
-    private init() {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 440, height: 400),
-            styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
-            backing: .buffered,
-            defer: false)
-        window.title = "MapleDown"
-        window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
-        window.isMovableByWindowBackground = true
-        window.isReleasedWhenClosed = false
-        super.init(window: window)
-        window.contentView = NSHostingView(rootView: WelcomeView(
-            onNew: { WelcomeWindowController.shared.newMarkdown() },
-            onOpen: { WelcomeWindowController.shared.openExisting() }
-        ))
-        window.center()
-    }
+    private init() {}
 
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { nil }
-
-    private func orderFront() {
-        // The SwiftUI launch scene is already a welcome window. Focusing that
-        // one avoids stacking a second, identical AppKit welcome beside it.
-        if let existing = NSApp.windows.first(where: {
-            $0 !== window && $0.isVisible && Self.isWelcome($0)
-        }) {
-            existing.makeKeyAndOrderFront(nil)
+    private func present() {
+        let welcomes = NSApp.windows.filter { Self.isWelcome($0) }
+        if let primary = welcomes.first(where: { $0.identifier?.rawValue == "mapledown.welcome" }) ?? welcomes.first {
+            for extra in welcomes where extra !== primary { extra.orderOut(nil) }
+            if primary.isMiniaturized { primary.deminiaturize(nil) }
+            primary.makeKeyAndOrderFront(nil)
             NSApp.activate()
+            Self.scheduleCollapse(preferring: primary)
             return
         }
-        window?.center()
-        window?.makeKeyAndOrderFront(nil)
+        openWelcome?()
         NSApp.activate()
+        Self.scheduleCollapse()
+    }
+
+    private static func scheduleCollapse(preferring key: NSWindow? = nil) {
+        DispatchQueue.main.async {
+            collapseDuplicates(preferring: key)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                collapseDuplicates(preferring: key)
+            }
+        }
     }
 
     func newMarkdown() {
@@ -124,15 +131,28 @@ final class WelcomeWindowController: NSWindowController {
             doc.close()
         }
         let otherWindowVisible = NSApp.windows.contains {
-            $0.isVisible && !Self.isWelcome($0)
+            $0.isVisible && !Self.isWelcome($0) && !($0 is NSPanel)
         }
         let welcomeVisible = NSApp.windows.contains { $0.isVisible && Self.isWelcome($0) }
-        // An untagged SwiftUI welcome still counts as another visible window, so
-        // this does not open the AppKit copy while the launch scene is on screen.
         if NSDocumentController.shared.documents.isEmpty && !otherWindowVisible && !welcomeVisible {
-            orderFront()
+            present()
         }
         Self.isArmed = true
+    }
+}
+
+/// Captures SwiftUI's openWindow action so a Dock click can reopen the same
+/// welcome scene instead of allocating a second window.
+struct WelcomeOpenBinder: View {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .onAppear {
+                let open = openWindow
+                WelcomeWindowController.bindOpen { open(id: "welcome") }
+            }
     }
 }
 

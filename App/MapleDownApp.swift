@@ -18,6 +18,7 @@ struct MapleDownApp: App {
                 onOpen: { WelcomeWindowController.shared.openExisting() }
             )
             .background(WelcomeWindowTagger())
+            .background(WelcomeOpenBinder())
         }
         .windowResizability(.contentSize)
 

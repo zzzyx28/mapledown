@@ -15,9 +15,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NotificationCenter.default.addObserver(
             forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main) { note in
+            guard let window = note.object as? NSWindow else { return }
+            if WelcomeWindowController.isWelcome(window) {
+                WelcomeWindowController.collapseDuplicates(preferring: window)
+                return
+            }
             guard WelcomeWindowController.isArmed,
-                  let window = note.object as? NSWindow,
-                  !WelcomeWindowController.isWelcome(window),
                   !(window is NSPanel) else { return }
             WelcomeWindowController.close()
         }
@@ -47,8 +50,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag { WelcomeWindowController.show() }
-        return true
+        if flag { return true }
+        // A miniaturized document should come back. An empty app should show the
+        // one SwiftUI welcome window, and must not let AppKit open a second one.
+        let hasOther = NSApp.windows.contains {
+            !WelcomeWindowController.isWelcome($0) && !($0 is NSPanel)
+                && ($0.isVisible || $0.isMiniaturized)
+        }
+        if hasOther { return true }
+        WelcomeWindowController.show()
+        return false
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
