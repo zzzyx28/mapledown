@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import MarkdownEditorKit
 
 /// Carries the top-visible source line between the rendered and raw views so the
@@ -83,6 +84,39 @@ final class OpenFocusRouter {
     static let shared = OpenFocusRouter()
     var pending: PendingFocus?
     private init() {}
+}
+
+/// SwiftUI's openDocument action does not consistently select an already-open
+/// document tab. Bring its AppKit window forward directly when one exists.
+enum OpenDocumentRouter {
+    private final class WindowRef {
+        weak var window: NSWindow?
+        init(_ window: NSWindow) { self.window = window }
+    }
+    private static var windows: [URL: WindowRef] = [:]
+
+    static func register(_ window: NSWindow, for url: URL) {
+        windows[url.standardizedFileURL] = WindowRef(window)
+    }
+
+    static func unregister(_ window: NSWindow, for url: URL) {
+        let key = url.standardizedFileURL
+        if windows[key]?.window === window { windows[key] = nil }
+    }
+
+    @discardableResult
+    static func showExisting(_ url: URL) -> Bool {
+        let key = url.standardizedFileURL
+        let documentWindow = NSDocumentController.shared.document(for: key)?
+            .windowControllers.compactMap(\.window).first
+        guard let window = windows[key]?.window ?? documentWindow else { return false }
+        OpenRootRouter.shared.roots[key] = nil
+        if window.isMiniaturized { window.deminiaturize(nil) }
+        window.tabGroup?.selectedWindow = window
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate()
+        return true
+    }
 }
 
 /// Watches the open file's folder and reconciles external edits with the editor: adopts

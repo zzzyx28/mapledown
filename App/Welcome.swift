@@ -47,12 +47,16 @@ final class WelcomeWindowController: NSWindowController {
     static let shared = WelcomeWindowController()
     static var isArmed = false
     static var isQuitting = false
+    static var isEmptyLaunch = false
     private var openingURLs = false
 
     static func show() { shared.orderFront() }
     static func close() { shared.window?.orderOut(nil) }
     static func isWelcome(_ window: NSWindow) -> Bool { window === shared.window }
-    static func noteOpeningURLs() { shared.openingURLs = true }
+    static func noteOpeningURLs() {
+        shared.openingURLs = true
+        isEmptyLaunch = false
+    }
 
     private init() {
         let window = NSWindow(
@@ -93,9 +97,8 @@ final class WelcomeWindowController: NSWindowController {
         if opened { window?.orderOut(nil) }
     }
 
-    /// Called once the app is up. A blank auto-created untitled document is closed
-    /// so the welcome window is what you see. A restored unsaved document
-    /// (`isDocumentEdited`) is left alone.
+    /// Called after AppKit's empty-launch request and after launch settles. A blank
+    /// auto-created untitled document is closed; a restored unsaved one is left alone.
     func showIfLaunchingIdle() {
         guard !openingURLs else {
             Self.isArmed = true
@@ -105,8 +108,15 @@ final class WelcomeWindowController: NSWindowController {
             doc.close()
         }
         if NSDocumentController.shared.documents.isEmpty {
+            // DocumentGroup may already have presented its automatic Open panel.
+            // This is the empty-launch path only; dismiss that panel before showing
+            // our welcome window, leaving user-initiated Open panels untouched.
+            for panel in NSApp.windows.compactMap({ $0 as? NSOpenPanel }) where panel.isVisible {
+                panel.cancel(nil)
+            }
             orderFront()
         }
+        Self.isEmptyLaunch = false
         Self.isArmed = true
     }
 }

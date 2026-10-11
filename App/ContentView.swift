@@ -89,7 +89,8 @@ struct ContentView: View {
         .focusedSceneValue(\.printAction, mode == .view ? printDocument : nil)
         .focusedSceneValue(\.exportPDFAction, mode == .view ? exportPDF : nil)
         .focusedSceneValue(\.headingJump, jumpRelativeHeading)
-        .background(WindowAccessor(rootKey: browsingRoot?.standardizedFileURL.path ?? "none"))
+        .background(WindowAccessor(rootKey: browsingRoot?.standardizedFileURL.path ?? "none",
+                                   fileURL: fileURL, sidebar: sidebar))
         // Toggling to the rendered view focuses it so arrow keys scroll immediately.
         // (The raw editor self-focuses on entry.) Only fires on an actual ⌘E toggle,
         // not on a fresh tab/Space-preview where mode starts at .view.
@@ -104,11 +105,19 @@ struct ContentView: View {
         .onChange(of: fileURL) { _, newURL in
             guard newURL != nil else { return }
             mode = .view
+            if let newURL {
+                let file = newURL.standardizedFileURL
+                browsingRoot = OpenRootRouter.shared.roots.removeValue(forKey: file)
+                    ?? newURL.deletingLastPathComponent()
+                sidebar.selection = newURL
+                fileSync.start(url: newURL)
+            }
         }
         // A sidebar-initiated open can land in this tab (new or already-open); claim
         // the parked focus intent once we're showing that file.
         .onAppear {
             claimPendingFocus()
+            sidebar.selection = fileURL
             if let f = fileURL?.standardizedFileURL { OpenRootRouter.shared.roots[f] = nil }
             fileSync.currentText = { document.text }
             fileSync.applyReload = { document.text = $0 }
@@ -140,6 +149,7 @@ struct ContentView: View {
         if let root = browsingRoot { OpenRootRouter.shared.roots[url.standardizedFileURL] = root }
         tree.reload()
         sidebar.captureScroll(root: browsingRoot)
+        if OpenDocumentRouter.showExisting(url) { return }
         Task { try? await openDocument(at: url) }
     }
 
@@ -252,6 +262,7 @@ struct ContentView: View {
         OpenFocusRouter.shared.pending = PendingFocus(url: url, target: .detail)
         if let root { OpenRootRouter.shared.roots[url.standardizedFileURL] = root }
         sidebar.captureScroll(root: browsingRoot)
+        if OpenDocumentRouter.showExisting(url) { return }
         Task { try? await openDocument(at: url) }
     }
 
@@ -566,8 +577,12 @@ private struct LinkHoverPill: View {
 private struct WindowAccessor: NSViewRepresentable {
     /// Files sharing this key (their parent folder) tab together; different keys open new windows.
     let rootKey: String
+    let fileURL: URL?
+    let sidebar: SidebarController
 
-    func makeCoordinator() -> Coordinator { Coordinator(rootKey: rootKey) }
+    func makeCoordinator() -> Coordinator {
+        Coordinator(rootKey: rootKey, fileURL: fileURL, sidebar: sidebar)
+    }
 
     func makeNSView(context: Context) -> WindowReaderView {
         let v = WindowReaderView()
@@ -575,7 +590,9 @@ private struct WindowAccessor: NSViewRepresentable {
         v.onWindow = { window in coord.attach(window) }
         return v
     }
-    func updateNSView(_ nsView: WindowReaderView, context: Context) {}
+    func updateNSView(_ nsView: WindowReaderView, context: Context) {
+        context.coordinator.update(fileURL: fileURL)
+    }
     static func dismantleNSView(_ nsView: WindowReaderView, coordinator: Coordinator) {
         coordinator.detach()
     }
@@ -594,9 +611,17 @@ private struct WindowAccessor: NSViewRepresentable {
         private static let sizeKey = "mapledown.windowSize"
         private static let registry = NSHashTable<NSWindow>.weakObjects()
         private let rootKey: String
+        private var fileURL: URL?
+        private weak var window: NSWindow?
+        private weak var sidebar: SidebarController?
         private var token: NSObjectProtocol?
+        private var keyToken: NSObjectProtocol?
 
-        init(rootKey: String) { self.rootKey = rootKey }
+        init(rootKey: String, fileURL: URL?, sidebar: SidebarController) {
+            self.rootKey = rootKey
+            self.fileURL = fileURL
+            self.sidebar = sidebar
+        }
 
         private var tabID: NSWindow.TabbingIdentifier { "mapledown::\(rootKey)" }
 
@@ -610,6 +635,8 @@ private struct WindowAccessor: NSViewRepresentable {
         }
 
         func attach(_ window: NSWindow) {
+            self.window = window
+            if let fileURL { OpenDocumentRouter.register(window, for: fileURL) }
             window.tabbingMode = .preferred
             window.tabbingIdentifier = tabID
 
@@ -651,6 +678,18 @@ private struct WindowAccessor: NSViewRepresentable {
                 guard let s = window?.frame.size else { return }
                 UserDefaults.standard.set(["w": Double(s.width), "h": Double(s.height)], forKey: Self.sizeKey)
             }
+            keyToken = NotificationCenter.default.addObserver(
+                forName: NSWindow.didBecomeKeyNotification, object: window, queue: .main) { [weak self] _ in
+                guard let self else { return }
+                self.sidebar?.selection = self.fileURL
+            }
+        }
+
+        func update(fileURL newURL: URL?) {
+            guard newURL != fileURL else { return }
+            if let fileURL, let window { OpenDocumentRouter.unregister(window, for: fileURL) }
+            fileURL = newURL
+            if let newURL, let window { OpenDocumentRouter.register(window, for: newURL) }
         }
 
         /// An existing live MapleDown window sharing this tab id — registry first, then a
@@ -661,8 +700,11 @@ private struct WindowAccessor: NSViewRepresentable {
         }
 
         func detach() {
+            if let fileURL, let window { OpenDocumentRouter.unregister(window, for: fileURL) }
             if let token { NotificationCenter.default.removeObserver(token) }
+            if let keyToken { NotificationCenter.default.removeObserver(keyToken) }
             token = nil
+            keyToken = nil
         }
     }
 }
